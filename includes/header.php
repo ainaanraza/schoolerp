@@ -33,6 +33,7 @@ if (!function_exists('nav_active')) {
                     <a href="/school-erp/modules/admission/apply.php" class="nav-item<?= nav_active('/modules/admission/apply.php') ?>">Admission Form</a>
                     <a href="/school-erp/modules/admission/leads.php" class="nav-item<?= nav_active('/modules/admission/leads.php') ?>">Leads</a>
                     <a href="/school-erp/modules/admission/students.php" class="nav-item<?= nav_active('/modules/admission/students.php') ?>">Students</a>
+                    <a href="/school-erp/modules/admission/documents.php" class="nav-item<?= nav_active('/modules/admission/documents.php') ?>">Documents</a>
                     <a href="/school-erp/modules/admission/parent_linking.php" class="nav-item<?= nav_active('/modules/admission/parent_linking.php') ?>">Parents</a>
                     <?php if (current_role() === 'super_admin'): ?>
                         <a href="/school-erp/modules/admission/admin_management.php" class="nav-item<?= nav_active('/modules/admission/admin_management.php') ?>">Staff</a>
@@ -88,9 +89,6 @@ if (!function_exists('nav_active')) {
                 <?php endif; ?>
                 
             </nav>
-            <div class="sidebar-footer">
-                <a href="/school-erp/logout.php" class="nav-item" style="color: var(--error);">Logout</a>
-            </div>
         </aside>
         
         <div class="app-main-content">
@@ -100,6 +98,7 @@ if (!function_exists('nav_active')) {
                     <p>Good to see you, <?= htmlspecialchars(current_user()['name']) ?></p>
                 </div>
                 <div class="header-user">
+                    <a href="/school-erp/logout.php" class="topbar-logout" title="Logout">Logout</a>
                     <div class="avatar" title="<?= htmlspecialchars(current_user()['name']) ?> (<?= htmlspecialchars(current_role()) ?>)">
                         <?= strtoupper(substr(current_user()['name'], 0, 1)) ?>
                     </div>

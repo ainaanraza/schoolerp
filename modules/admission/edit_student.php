@@ -55,6 +55,31 @@ if (!$student) {
     exit;
 }
 
+$uploadDir = __DIR__ . '/../../uploads/photos/';
+if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0755, true);
+}
+
+$isLocalPhotoPath = static function (?string $path): bool {
+    if ($path === null) {
+        return false;
+    }
+
+    return str_starts_with($path, '/school-erp/uploads/photos/');
+};
+
+$deleteLocalPhoto = static function (?string $path) use ($isLocalPhotoPath): void {
+    if ($path === null || !$isLocalPhotoPath($path)) {
+        return;
+    }
+
+    $relativePath = ltrim(str_replace('/school-erp/', '', $path), '/');
+    $absolutePath = __DIR__ . '/../../' . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+    if (is_file($absolutePath)) {
+        @unlink($absolutePath);
+    }
+};
+
 $classes = [];
 $classesStatement = $pdo->query(
     'SELECT c.id, c.class_name, c.section, s.title AS session_title, s.is_active AS session_is_active
@@ -75,6 +100,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $parentAddress = trim($_POST['parent_address'] ?? '');
     $status = trim($_POST['status'] ?? '');
     $classId = (int)($_POST['class_id'] ?? 0);
+    $removePhoto = (string)($_POST['remove_photo'] ?? '') === '1';
+    $currentPhotoPath = !empty($student['photo_path']) ? (string)$student['photo_path'] : null;
+    $updatedPhotoPath = $currentPhotoPath;
 
     $allowedStatuses = ['lead', 'enrolled', 'inactive'];
     $allowedGenders = ['', 'male', 'female', 'other'];
@@ -95,6 +123,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($dob !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
         $errors[] = 'Date of birth must be in YYYY-MM-DD format.';
+    }
+
+    if (empty($errors) && $removePhoto) {
+        $updatedPhotoPath = null;
+    }
+
+    if (empty($errors) && isset($_FILES['photo']) && ($_FILES['photo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $_FILES['photo']['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime, $allowed, true)) {
+            $errors[] = 'Photo must be a JPEG, PNG, or WebP image.';
+        } elseif (($_FILES['photo']['size'] ?? 0) > 5 * 1024 * 1024) {
+            $errors[] = 'Photo must be under 5 MB.';
+        } else {
+            $ext = match($mime) {
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+                default => 'jpg',
+            };
+            $filename = 'student_' . $studentId . '_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $uploadDir . $filename)) {
+                $updatedPhotoPath = '/school-erp/uploads/photos/' . $filename;
+            } else {
+                $errors[] = 'Failed to save uploaded photo.';
+            }
+        }
+    }
+
+    if (empty($errors)) {
+        $cameraData = trim((string)($_POST['camera_photo'] ?? ''));
+        if ($cameraData !== '' && str_starts_with($cameraData, 'data:image/')) {
+            $parts = explode(',', $cameraData, 2);
+            if (count($parts) === 2) {
+                $decoded = base64_decode($parts[1]);
+                if ($decoded !== false && strlen($decoded) > 100) {
+                    $ext = str_contains($parts[0], 'png') ? 'png' : 'jpg';
+                    $filename = 'student_cam_' . $studentId . '_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
+                    if (file_put_contents($uploadDir . $filename, $decoded) !== false) {
+                        $updatedPhotoPath = '/school-erp/uploads/photos/' . $filename;
+                    } else {
+                        $errors[] = 'Failed to save captured photo.';
+                    }
+                }
+            }
+        }
     }
 
     $emailOwnerStatement = $pdo->prepare('SELECT id FROM users WHERE email = :email AND id <> :id LIMIT 1');
@@ -141,6 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  SET roll_number = :roll_number,
                      dob = :dob,
                      gender = :gender,
+                     photo_path = :photo_path,
                      address = :address,
                      status = :status
                  WHERE id = :id'
@@ -149,6 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'roll_number' => $rollNumber !== '' ? $rollNumber : null,
                 'dob' => $dob !== '' ? $dob : null,
                 'gender' => $gender !== '' ? $gender : null,
+                'photo_path' => $updatedPhotoPath,
                 'address' => $address !== '' ? $address : null,
                 'status' => $status,
                 'id' => $studentId,
@@ -208,6 +287,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $pdo->commit();
+
+            if (($currentPhotoPath !== $updatedPhotoPath || $removePhoto) && $currentPhotoPath !== null) {
+                $deleteLocalPhoto($currentPhotoPath);
+            }
+
             header('Location: /school-erp/modules/admission/students.php?updated=1');
             exit;
         } catch (Throwable $throwable) {
@@ -228,6 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student['parent_address'] = $parentAddress;
     $student['status'] = $status;
     $student['class_id'] = $classId;
+    $student['photo_path'] = $updatedPhotoPath;
 }
 
 $pageTitle = 'Edit Student';
@@ -245,7 +330,7 @@ require __DIR__ . '/../../includes/header.php';
         </div>
     <?php endif; ?>
 
-    <form method="post" class="form-grid form-grid-wide">
+    <form method="post" enctype="multipart/form-data" class="form-grid form-grid-wide">
         <input type="hidden" name="student_id" value="<?= (int)$student['id'] ?>">
 
         <label>Student Name</label>
@@ -270,6 +355,38 @@ require __DIR__ . '/../../includes/header.php';
             <option value="female" <?= ($student['gender'] ?? '') === 'female' ? 'selected' : '' ?>>Female</option>
             <option value="other" <?= ($student['gender'] ?? '') === 'other' ? 'selected' : '' ?>>Other</option>
         </select>
+
+        <label>Student Photo</label>
+        <div class="photo-upload-area">
+            <div class="photo-preview" id="photoPreview">
+                <?php if (!empty($student['photo_path'])): ?>
+                    <img id="previewImg" src="<?= htmlspecialchars((string)$student['photo_path']) ?>" alt="Student Photo">
+                    <span id="previewPlaceholder" style="display:none;">No photo selected</span>
+                <?php else: ?>
+                    <img id="previewImg" src="" alt="Student Photo" style="display:none;">
+                    <span id="previewPlaceholder">No photo selected</span>
+                <?php endif; ?>
+            </div>
+            <div class="photo-actions">
+                <label class="photo-btn" for="photoFileInput">Upload</label>
+                <input type="file" id="photoFileInput" name="photo" accept="image/jpeg,image/png,image/webp" style="display:none;">
+                <button type="button" class="photo-btn" id="cameraBtn">Camera</button>
+                <button type="button" class="photo-btn photo-btn-danger" id="clearPhotoBtn">Clear</button>
+            </div>
+            <input type="hidden" name="camera_photo" id="cameraPhotoData" value="">
+            <input type="hidden" name="remove_photo" id="removePhotoInput" value="0">
+        </div>
+
+        <div id="cameraModal" class="camera-modal" style="display:none;">
+            <div class="camera-modal-inner">
+                <video id="cameraFeed" autoplay playsinline></video>
+                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <div class="camera-modal-actions">
+                    <button type="button" id="captureBtn" class="photo-btn">Capture</button>
+                    <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>
+                </div>
+            </div>
+        </div>
 
         <label>Address</label>
         <textarea name="address" rows="3"><?= htmlspecialchars((string)($student['address'] ?? '')) ?></textarea>
@@ -303,4 +420,82 @@ require __DIR__ . '/../../includes/header.php';
         <button type="submit">Save Changes</button>
     </form>
 </section>
+<script>
+(function() {
+    var fileInput = document.getElementById('photoFileInput');
+    var previewImg = document.getElementById('previewImg');
+    var placeholder = document.getElementById('previewPlaceholder');
+    var cameraBtn = document.getElementById('cameraBtn');
+    var clearBtn = document.getElementById('clearPhotoBtn');
+    var cameraModal = document.getElementById('cameraModal');
+    var cameraFeed = document.getElementById('cameraFeed');
+    var cameraCanvas = document.getElementById('cameraCanvas');
+    var captureBtn = document.getElementById('captureBtn');
+    var closeCameraBtn = document.getElementById('closeCameraBtn');
+    var cameraData = document.getElementById('cameraPhotoData');
+    var removePhotoInput = document.getElementById('removePhotoInput');
+    var stream = null;
+
+    function showPreview(src) {
+        previewImg.src = src;
+        previewImg.style.display = 'block';
+        placeholder.style.display = 'none';
+        removePhotoInput.value = '0';
+    }
+
+    function clearPreview() {
+        previewImg.src = '';
+        previewImg.style.display = 'none';
+        placeholder.style.display = '';
+        fileInput.value = '';
+        cameraData.value = '';
+        removePhotoInput.value = '1';
+    }
+
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            cameraData.value = '';
+            var reader = new FileReader();
+            reader.onload = function(e) { showPreview(e.target.result); };
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+
+    clearBtn.addEventListener('click', clearPreview);
+
+    cameraBtn.addEventListener('click', function() {
+        cameraModal.style.display = 'flex';
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } })
+            .then(function(s) {
+                stream = s;
+                cameraFeed.srcObject = stream;
+            })
+            .catch(function() {
+                alert('Camera access denied or not available.');
+                cameraModal.style.display = 'none';
+            });
+    });
+
+    captureBtn.addEventListener('click', function() {
+        cameraCanvas.width = cameraFeed.videoWidth;
+        cameraCanvas.height = cameraFeed.videoHeight;
+        cameraCanvas.getContext('2d').drawImage(cameraFeed, 0, 0);
+        var dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.85);
+        cameraData.value = dataUrl;
+        fileInput.value = '';
+        showPreview(dataUrl);
+        closeCamera();
+    });
+
+    function closeCamera() {
+        cameraModal.style.display = 'none';
+        if (stream) {
+            stream.getTracks().forEach(function(track) { track.stop(); });
+            stream = null;
+        }
+    }
+
+    closeCameraBtn.addEventListener('click', closeCamera);
+})();
+</script>
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

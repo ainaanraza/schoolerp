@@ -170,6 +170,29 @@ p {
   font-weight: 500;
 }
 
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.topbar-logout {
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--error);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.38rem 0.72rem;
+  transition: all 0.2s ease;
+}
+
+.topbar-logout:hover {
+  background: var(--error-container);
+  transform: translateY(-1px);
+}
+
 .avatar {
   background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: var(--on-primary);
@@ -618,6 +641,20 @@ tr:last-child td {
 .compact-student-table .pill {
   font-size: 0.68rem;
   padding: 0.25rem 0.65rem;
+}
+
+.table-photo-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--outline-variant);
+  display: block;
+}
+
+.table-photo-placeholder {
+  font-size: 0.72rem;
+  color: var(--on-surface-variant);
 }
 
 /* Photo Upload Area */

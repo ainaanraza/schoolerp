@@ -1,0 +1,2297 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 4028
+>>
+stream
+0.200025 w
+0 G
+BT
+/F1 50 Tf
+57.4999999999999929 TL
+0.902 g
+0.7071067811865476 0.7071067811865475 -0.7071067811865475 0.7071067811865476 229. 378.5 Tm
+(Aidube) Tj
+ET
+BT
+/F2 22 Tf
+25.2999999999999972 TL
+0. g
+40. 732. Td
+(Complete Notes) Tj
+ET
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0.078 g
+40. 682. Td
+(PHP `$_GET` and `$_POST` Explained: Comprehensive Study Notes) Tj
+ET
+BT
+/F2 15 Tf
+17.25 TL
+0.078 g
+40. 639. Td
+(1. Executive Summary) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 609. Td
+(This document provides a detailed explanation of PHP's `$_GET` and `$_POST` superglobal variables, which) Tj
+T* (are fundamental for handling data submitted via HTTP requests, typically from HTML forms. We will explore) Tj
+T* (their core definitions, how they differ in terms of data transmission and visibility, their respective use cases,) Tj
+T* (and important security considerations. Understanding these superglobals is crucial for any PHP developer) Tj
+T* (building interactive web applications that collect user input.) Tj
+ET
+BT
+/F2 15 Tf
+17.25 TL
+0.078 g
+40. 506. Td
+(2. Key Concepts) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 476. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 476. Td
+(HTTP Request Methods:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 462. Td
+( The primary ways a client \(e.g., a web browser\) communicates with a server. The two most common) Tj
+T* (methods for sending data are GET and POST.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 419. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 419. Td
+(Superglobal Variables:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 405. Td
+( Special built-in PHP variables that are always available in all scopes throughout a script. They do not require) Tj
+T* (`global` keyword to be accessed inside functions or methods. `$_GET` and `$_POST` are examples of) Tj
+T* (superglobals.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 348. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 348. Td
+(Form Submission:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 334. Td
+( The process by which user-entered data from an HTML form is sent to a web server for processing. The) Tj
+T* (`method` attribute of the `<form>` tag determines whether GET or POST is used.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 291. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 291. Td
+(URL Parameters \(Query String\):) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 277. Td
+( Data appended to a URL after a question mark \(`?`\). Each parameter is a key-value pair, separated by an) Tj
+T* (ampersand \(`&`\). This is how data is transmitted using the GET method.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 234. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 234. Td
+(Request Body:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 220. Td
+( The part of an HTTP request that contains the actual data being sent from the client to the server. This is) Tj
+T* (where data is transmitted using the POST method, making it invisible in the URL.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 177. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 177. Td
+(Idempotence:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 163. Td
+( An operation is idempotent if it produces the same result no matter how many times it is executed. GET) Tj
+T* (requests are generally considered idempotent \(retrieving data multiple times doesn't change server state\),) Tj
+T* (while POST requests are not \(submitting a form multiple times might create multiple entries\).) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 106. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 106. Td
+(Security Considerations:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 92. Td
+( The choice between GET and POST has implications for data privacy \(visibility in URL\) and data integrity) Tj
+T* (\(how data is handled\).) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 6492
+>>
+stream
+0.200025 w
+0 G
+BT
+/F2 15 Tf
+17.25 TL
+0.078 g
+40. 744. Td
+(3. Core Definitions) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 714. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 714. Td
+(`$_GET`) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+81.9099999999999966 714. Td
+(:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 699. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 699. Td
+(A ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+50.3400000000000034 699. Td
+(PHP superglobal associative array) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+229.7500000000000568 699. Td
+( used to collect data sent with the ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+394.7500000000000568 699. Td
+(HTTP GET method) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+491.6600000000000819 699. Td
+(.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 684. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 684. Td
+(Data is appended to the URL as a ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+207.8599999999999852 684. Td
+(query string) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+271.2199999999999704 684. Td
+( \(e.g., `page.php?name=John&age=30`\).) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 669. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 669. Td
+(Visibility:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+88.730000000000004 669. Td
+( Data is visible in the browser's URL bar and browser history.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 654. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 654. Td
+(Data Limit:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 640. Td
+( Has practical limits on the amount of data that can be sent \(typically around 2048 characters, depending on) Tj
+T* (the browser and server\).) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 597. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 597. Td
+(Use Cases:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+98.8499999999999943 597. Td
+( Retrieving data, search queries, pagination, filtering, bookmarkable links.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 582. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 582. Td
+(Security:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+86.75 582. Td
+( Not suitable for sensitive data \(passwords, personal info\) due to URL visibility.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 567. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 567. Td
+(Idempotent:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 553. Td
+( Generally considered idempotent, meaning repeated requests should not have additional side effects.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 514. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 514. Td
+(`$_POST`) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+89.1700000000000159 514. Td
+(:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 499. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 499. Td
+(A ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+50.3400000000000034 499. Td
+(PHP superglobal associative array) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+229.7500000000000568 499. Td
+( used to collect data sent with the ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+394.7500000000000568 499. Td
+(HTTP POST method) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+498.9200000000000728 499. Td
+(.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 484. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 484. Td
+(Data is sent in the ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+130.75 484. Td
+(HTTP request body) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+231.1800000000000352 484. Td
+(, not in the URL.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 469. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 469. Td
+(Visibility:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+88.730000000000004 469. Td
+( Data is not visible in the browser's URL bar or browser history.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 454. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 454. Td
+(Data Limit:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 440. Td
+( Has no practical limits on the amount of data that can be sent \(limited by server configuration, e.g.,) Tj
+T* (`post_max_size` in `php.ini`\).) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 397. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 397. Td
+(Use Cases:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 383. Td
+( Submitting forms \(login, registration, contact forms\), uploading files, sending large amounts of data,) Tj
+T* (operations that modify server state.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 340. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 340. Td
+(Security:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+86.75 340. Td
+( More suitable for sensitive data as it's not exposed in the URL.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 325. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 325. Td
+(Not Idempotent:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 311. Td
+( Repeated requests can have additional side effects \(e.g., submitting the same order multiple times\).) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 272. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 272. Td
+(Superglobal Variable) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 258. Td
+(: A predefined PHP variable that is always accessible, regardless of the current scope. Examples include) Tj
+T* (`$_GET`, `$_POST`, `$_SESSION`, `$_COOKIE`, `$_SERVER`, `$_FILES`, `$_REQUEST`, `$_ENV`,) Tj
+T* (`$_GLOBALS`.) Tj
+ET
+BT
+/F2 15 Tf
+17.25 TL
+0.078 g
+40. 183. Td
+(4. Examples) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.078 g
+40. 147. Td
+(Example 1: Using `$_GET`) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 117. Td
+(Scenario:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+89.8300000000000125 117. Td
+( A simple search form where the search term is passed via the URL.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 92. Td
+(HTML Form \(`search.html`\):) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 67. Td
+(```html) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 52. Td
+(<!DOCTYPE html>) Tj
+ET
+endstream
+endobj
+7 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 8 0 R
+>>
+endobj
+8 0 obj
+<<
+/Length 3998
+>>
+stream
+0.200025 w
+0 G
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 752. Td
+(<html lang="en">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 737. Td
+(<head>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 722. Td
+(<meta charset="UTF-8">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 707. Td
+(<title>Search Page</title>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 692. Td
+(</head>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 677. Td
+(<body>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 662. Td
+(<h1>Search for Products</h1>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 647. Td
+(<form action="results.php" method="get">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 632. Td
+(<label for="query">Search Term:</label>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 617. Td
+(<input type="text" id="query" name="search_query" required>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 602. Td
+(<button type="submit">Search</button>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 587. Td
+(</form>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 572. Td
+(</body>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 557. Td
+(</html>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 542. Td
+(```) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 517. Td
+(PHP Script \(`results.php`\):) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 492. Td
+(```php) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 477. Td
+(<!DOCTYPE html>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 462. Td
+(<html lang="en">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 447. Td
+(<head>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 432. Td
+(<meta charset="UTF-8">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 417. Td
+(<title>Search Results</title>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 402. Td
+(</head>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 387. Td
+(<body>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 372. Td
+(<h1>Search Results</h1>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 357. Td
+(<?php) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 342. Td
+(// Check if the 'search_query' parameter exists in the URL) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 327. Td
+(if \(isset\($_GET['search_query']\)\) {) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 312. Td
+($searchTerm = htmlspecialchars\($_GET['search_query']\); // Sanitize input) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 297. Td
+(echo "<p>You searched for: <strong>" . $searchTerm . "</strong></p>";) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 282. Td
+(echo "<p>Displaying results for '" . $searchTerm . "'...</p>";) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 267. Td
+(// In a real application, you would query a database here) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 252. Td
+(} else {) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 237. Td
+(echo "<p>No search term provided.</p>";) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 222. Td
+(}) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 207. Td
+(?>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 192. Td
+(<p><a href="search.html">Go back to search</a></p>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 177. Td
+(</body>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 162. Td
+(</html>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 147. Td
+(```) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 122. Td
+(How it works:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 107. Td
+(1.  When you submit `search.html` with "laptop" in the search box, the browser navigates to) Tj
+T* (`results.php?search_query=laptop`.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 64. Td
+(2.  The `results.php` script accesses the `search_query` value using `$_GET['search_query']`.) Tj
+ET
+endstream
+endobj
+9 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 10 0 R
+>>
+endobj
+10 0 obj
+<<
+/Length 3925
+>>
+stream
+0.200025 w
+0 G
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.078 g
+40. 746. Td
+(Example 2: Using `$_POST`) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 716. Td
+(Scenario:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+89.8300000000000125 716. Td
+( A contact form where user details are submitted privately.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 691. Td
+(HTML Form \(`contact.html`\):) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 666. Td
+(```html) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 651. Td
+(<!DOCTYPE html>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 636. Td
+(<html lang="en">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 621. Td
+(<head>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 606. Td
+(<meta charset="UTF-8">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 591. Td
+(<title>Contact Us</title>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 576. Td
+(</head>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 561. Td
+(<body>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 546. Td
+(<h1>Contact Us</h1>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 531. Td
+(<form action="submit_contact.php" method="post">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 516. Td
+(<label for="name">Your Name:</label><br>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 501. Td
+(<input type="text" id="name" name="user_name" required><br><br>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 476. Td
+(<label for="email">Your Email:</label><br>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 461. Td
+(<input type="email" id="email" name="user_email" required><br><br>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 436. Td
+(<label for="message">Your Message:</label><br>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 421. Td
+(<textarea id="message" name="user_message" rows="5" required></textarea><br><br>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 396. Td
+(<button type="submit">Send Message</button>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 381. Td
+(</form>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 366. Td
+(</body>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 351. Td
+(</html>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 336. Td
+(```) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 311. Td
+(PHP Script \(`submit_contact.php`\):) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 286. Td
+(```php) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 271. Td
+(<!DOCTYPE html>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 256. Td
+(<html lang="en">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 241. Td
+(<head>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 226. Td
+(<meta charset="UTF-8">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 211. Td
+(<title>Contact Submission</title>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 196. Td
+(</head>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 181. Td
+(<body>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 166. Td
+(<h1>Thank You for Your Message!</h1>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 151. Td
+(<?php) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 136. Td
+(// Check if the form was submitted using POST) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 121. Td
+(if \($_SERVER["REQUEST_METHOD"] == "POST"\) {) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 106. Td
+(// Retrieve and sanitize data from $_POST) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 91. Td
+($name = htmlspecialchars\($_POST['user_name']\);) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 76. Td
+($email = htmlspecialchars\($_POST['user_email']\);) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 61. Td
+($message = htmlspecialchars\($_POST['user_message']\);) Tj
+ET
+endstream
+endobj
+11 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 12 0 R
+>>
+endobj
+12 0 obj
+<<
+/Length 4769
+>>
+stream
+0.200025 w
+0 G
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 752. Td
+(echo "<p>Name: <strong>" . $name . "</strong></p>";) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 737. Td
+(echo "<p>Email: <strong>" . $email . "</strong></p>";) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 722. Td
+(echo "<p>Message: <strong>" . $message . "</strong></p>";) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 707. Td
+(echo "<p>Your message has been received. We will get back to you shortly.</p>";) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 682. Td
+(// In a real application, you would save this data to a database) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 667. Td
+(// or send an email.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 652. Td
+(} else {) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 637. Td
+(echo "<p>This page should be accessed via a POST request from the contact form.</p>";) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 622. Td
+(}) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 607. Td
+(?>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 592. Td
+(<p><a href="contact.html">Go back to contact form</a></p>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 577. Td
+(</body>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 562. Td
+(</html>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 547. Td
+(```) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 522. Td
+(How it works:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 507. Td
+(1.  When you submit `contact.html`, the data is sent to `submit_contact.php` in the HTTP request body.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 492. Td
+(2.  The URL remains `submit_contact.php`, without any visible parameters.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 477. Td
+(3.  The `submit_contact.php` script accesses the form data using `$_POST['user_name']`,) Tj
+T* (`$_POST['user_email']`, and `$_POST['user_message']`.) Tj
+ET
+BT
+/F2 15 Tf
+17.25 TL
+0.078 g
+40. 416. Td
+(5. Practice Questions) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 386. Td
+(1.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 386. Td
+(What is the primary difference between how `$_GET` and `$_POST` transmit data to a PHP script?) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 371. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 371. Td
+(A\) `$_GET` uses cookies, `$_POST` uses sessions.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 356. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 356. Td
+(B\) `$_GET` appends data to the URL, `$_POST` sends data in the HTTP request body.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 341. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 341. Td
+(C\) `$_GET` is for text, `$_POST` is for files.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 326. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 326. Td
+(D\) `$_GET` is for internal use, `$_POST` is for external use.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 301. Td
+(2.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 287. Td
+(Which PHP superglobal variable would you use to retrieve data from a form submitted with) Tj
+T* (`method="post"`?) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 244. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 244. Td
+(A\) `$_REQUEST`) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 229. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 229. Td
+(B\) `$_SESSION`) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 214. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 214. Td
+(C\) `$_GET`) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 199. Td
+(•) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 199. Td
+(D\) `$_POST`) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 174. Td
+(3.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 174. Td
+(True or False:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 160. Td
+( Data sent via the GET method is generally considered more secure for sensitive information like passwords) Tj
+T* (because it's encrypted.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 107. Td
+(4.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 93. Td
+(You are building a search page where users can search for products. Which HTTP method \(`GET` or) Tj
+T* (`POST`\) would be more appropriate for the search form, and why?) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 40. Td
+(5.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 40. Td
+(Consider the following HTML form:) Tj
+ET
+endstream
+endobj
+13 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 14 0 R
+>>
+endobj
+14 0 obj
+<<
+/Length 5059
+>>
+stream
+0.200025 w
+0 G
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 752. Td
+(```html) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 737. Td
+(<form action="process.php" method="get">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 722. Td
+(<input type="text" name="item_id" value="123">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 707. Td
+(<input type="submit" value="View Item">) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 692. Td
+(</form>) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 677. Td
+(```) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 662. Td
+(If a user submits this form, what would the URL look like, and how would you access the `item_id` in) Tj
+T* (`process.php`?) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 609. Td
+(6.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 595. Td
+(What is a "superglobal variable" in PHP, and why are `$_GET` and `$_POST` considered) Tj
+T* (superglobals?) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 542. Td
+(7.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 528. Td
+(When might you encounter a "data limit" issue, and which method \(`GET` or `POST`\) is more) Tj
+T* (susceptible to it?) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 475. Td
+(8.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 475. Td
+(Scenario:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 461. Td
+( A user fills out a registration form with their username, email, and password. Which method \(`GET` or) Tj
+T* (`POST`\) should be used for submitting this form, and what are the security implications of choosing the wrong) Tj
+T* (method?) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 394. Td
+(---) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 369. Td
+(Answer Key:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 344. Td
+(1.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 344. Td
+(B\)) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+66.8400000000000034 344. Td
+( `$_GET` appends data to the URL, `$_POST` sends data in the HTTP request body.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 329. Td
+(2.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 329. Td
+(D\)) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+66.8400000000000034 329. Td
+( `$_POST`) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 314. Td
+(3.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 314. Td
+(False.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 300. Td
+( Data sent via GET is visible in the URL and is not inherently encrypted. POST is generally preferred for) Tj
+T* (sensitive data because it's not exposed in the URL.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 257. Td
+(4.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 257. Td
+(GET) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+77.8400000000000034 257. Td
+( would be more appropriate.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 242. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 242. Td
+(Why:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 228. Td
+( Search results are often bookmarkable and shareable. The search query in the URL allows users to easily) Tj
+T* (share specific search results or refresh the page without re-entering the query. GET requests are also) Tj
+T* (generally idempotent, meaning repeating the search doesn't change server state.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 171. Td
+(5.  ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+55.2899999999999991 171. Td
+(URL:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+81.4699999999999989 171. Td
+( `process.php?item_id=123`) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 156. Td
+(Access in `process.php`:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+170.1299999999999955 156. Td
+( `echo $_GET['item_id'];`) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 141. Td
+(6.  A ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+65.6299999999999955 141. Td
+(superglobal variable) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 127. Td
+( is a predefined PHP variable that is always accessible in all scopes throughout a script, without needing to) Tj
+T* (use the `global` keyword. `$_GET` and `$_POST` are superglobals because they are automatically available) Tj
+T* (everywhere in your code to collect HTTP request data.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 70. Td
+(7.  You might encounter a data limit issue when sending a very large amount of data. The ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+472.7399999999999523 70. Td
+(GET) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 56. Td
+( method is more susceptible to this, as URLs have practical length limits \(e.g., around 2048 characters in) Tj
+T* (many browsers\). The POST method has much larger limits, typically configured by the server's) Tj
+T* (`post_max_size` setting.) Tj
+ET
+endstream
+endobj
+15 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 16 0 R
+>>
+endobj
+16 0 obj
+<<
+/Length 989
+>>
+stream
+0.200025 w
+0 G
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 752. Td
+(8.  The ) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+77.1800000000000068 752. Td
+(POST) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+106.9900000000000091 752. Td
+( method should be used.) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+25. 737. Td
+(•) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 737. Td
+(Security Implications of choosing GET:) Tj
+ET
+BT
+/F1 11 Tf
+12.6499999999999986 TL
+0.078 g
+40. 723. Td
+( If GET were used, the username, email, and especially the password would be visible directly in the) Tj
+T* (browser's URL bar, in browser history, and in server logs. This makes the sensitive information easily) Tj
+T* (accessible to anyone looking over the user's shoulder, or if the URL is accidentally shared or logged, leading) Tj
+T* (to severe security vulnerabilities. POST hides this data in the request body, making it much more secure for) Tj
+T* (sensitive information.) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R ]
+/Count 7
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+19 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+20 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+21 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+22 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+23 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+24 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+25 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+26 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+27 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+28 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+29 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+30 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 17 0 R
+/F2 18 0 R
+/F3 19 0 R
+/F4 20 0 R
+/F5 21 0 R
+/F6 22 0 R
+/F7 23 0 R
+/F8 24 0 R
+/F9 25 0 R
+/F10 26 0 R
+/F11 27 0 R
+/F12 28 0 R
+/F13 29 0 R
+/F14 30 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+31 0 obj
+<<
+/Producer (jsPDF 2.5.1)
+/CreationDate (D:20260224212250+05'30')
+>>
+endobj
+32 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 33
+0000000000 65535 f 
+0000030384 00000 n 
+0000032245 00000 n 
+0000000015 00000 n 
+0000000120 00000 n 
+0000004200 00000 n 
+0000004305 00000 n 
+0000010849 00000 n 
+0000010954 00000 n 
+0000015004 00000 n 
+0000015110 00000 n 
+0000019088 00000 n 
+0000019195 00000 n 
+0000024017 00000 n 
+0000024124 00000 n 
+0000029236 00000 n 
+0000029343 00000 n 
+0000030480 00000 n 
+0000030606 00000 n 
+0000030737 00000 n 
+0000030871 00000 n 
+0000031009 00000 n 
+0000031133 00000 n 
+0000031262 00000 n 
+0000031394 00000 n 
+0000031530 00000 n 
+0000031658 00000 n 
+0000031785 00000 n 
+0000031914 00000 n 
+0000032047 00000 n 
+0000032149 00000 n 
+0000032498 00000 n 
+0000032584 00000 n 
+trailer
+<<
+/Size 33
+/Root 32 0 R
+/Info 31 0 R
+/ID [ <0D96FD5CA8358F9FC64EF23F53B58946> <0D96FD5CA8358F9FC64EF23F53B58946> ]
+>>
+startxref
+32688
+%%EOF

@@ -62,6 +62,7 @@ $baseSql =
         s.id,
         s.admission_no,
         s.roll_number,
+        s.photo_path,
         s.status,
         s.created_at,
         su.full_name AS student_name,
@@ -346,6 +347,7 @@ require __DIR__ . '/../../includes/header.php';
         <table class="student-table compact-student-table">
             <thead>
                 <tr>
+                    <th>Photo</th>
                     <th>Admission No</th>
                     <th>Student</th>
                     <th>Parent</th>
@@ -360,6 +362,13 @@ require __DIR__ . '/../../includes/header.php';
             <tbody>
                 <?php foreach ($students as $student): ?>
                     <tr>
+                        <td>
+                            <?php if (!empty($student['photo_path'])): ?>
+                                <img src="<?= htmlspecialchars((string)$student['photo_path']) ?>" alt="Student Photo" class="table-photo-thumb">
+                            <?php else: ?>
+                                <span class="table-photo-placeholder">No Photo</span>
+                            <?php endif; ?>
+                        </td>
                         <td><?= htmlspecialchars($student['admission_no']) ?></td>
                         <td>
                             <?= htmlspecialchars((string)$student['student_name']) ?><br>
@@ -398,7 +407,7 @@ require __DIR__ . '/../../includes/header.php';
                 <?php endforeach; ?>
                 <?php if (empty($students)): ?>
                     <tr>
-                        <td colspan="<?= $canEditStudents ? 7 : 6 ?>">No students found matching your criteria.</td>
+                        <td colspan="<?= $canEditStudents ? 8 : 7 ?>">No students found matching your criteria.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>

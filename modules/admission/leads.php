@@ -779,6 +779,7 @@ require __DIR__ . '/../../includes/header.php';
             <thead>
                 <tr>
                     <th>ID</th>
+                    <th>Photo</th>
                     <th>Student</th>
                     <th>Guardian</th>
                     <th>Class</th>
@@ -795,6 +796,13 @@ require __DIR__ . '/../../includes/header.php';
                     ?>
                     <tr>
                         <td><?= (int)$lead['id'] ?></td>
+                        <td>
+                            <?php if (!empty($lead['photo_path'])): ?>
+                                <img src="<?= htmlspecialchars((string)$lead['photo_path']) ?>" alt="Lead Photo" class="table-photo-thumb">
+                            <?php else: ?>
+                                <span class="table-photo-placeholder">No Photo</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?= htmlspecialchars($lead['lead_name']) ?><br>
                             <small><?= htmlspecialchars((string)$lead['email']) ?></small>
@@ -814,6 +822,8 @@ require __DIR__ . '/../../includes/header.php';
                         </td>
                         <td><?= htmlspecialchars($lead['source']) ?></td>
                         <td>
+                            <a class="nav-item" href="/school-erp/modules/admission/edit_lead.php?id=<?= (int)$lead['id'] ?>" style="margin-bottom:6px; display:inline-flex;">Edit</a>
+
                             <form method="post" class="inline-form" style="margin-bottom:6px;">
                                 <input type="hidden" name="action" value="update_fee">
                                 <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
@@ -867,6 +877,11 @@ require __DIR__ . '/../../includes/header.php';
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                <?php if (empty($leads)): ?>
+                    <tr>
+                        <td colspan="9">No leads found matching your criteria.</td>
+                    </tr>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
