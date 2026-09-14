@@ -28,11 +28,18 @@ $pageTitle = 'Login';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="card">
-    <h2>Login</h2>
+    <div class="login-brand-block">
+        <div class="login-brand-mark" aria-hidden="true">
+            <img src="/school-erp/assets/images/unityiti_logo.jpeg" alt="" class="login-brand-logo">
+        </div>
+        <p class="login-overline">Unity ITI ERP SUITE</p>
+        <h2>Sign in to your workspace</h2>
+        <p class="login-subtitle">Securely access admissions, academics, attendance, and fees from one refined dashboard.</p>
+    </div>
     <?php if ($error): ?>
         <p class="error"><?= htmlspecialchars($error) ?></p>
     <?php endif; ?>
-    <form method="post" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <form method="post" class="stacked-form">
         <div>
             <label>Email</label>
             <input type="email" name="email" required placeholder="Enter your email">

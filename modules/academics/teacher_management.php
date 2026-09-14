@@ -185,6 +185,83 @@ require __DIR__ . '/../../includes/header.php';
     </div>
 
     <section class="card">
+        <div class="form-header-actions">
+            <h3>Teachers</h3>
+            <div class="toolbar-actions-tight">
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-create-teacher', this)">+ Add Teacher</button>
+            </div>
+        </div>
+        <form method="get" class="filter-bar">
+            <input type="text" name="search" placeholder="Search name/email/code" value="<?= htmlspecialchars($searchQuery) ?>">
+            <button type="submit">Search</button>
+        </form>
+        <div class="table-wrap">
+            <table class="compact-table staff-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Employee Code</th>
+                        <th>Phone</th>
+                        <th>Qualification</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($teachers)): ?>
+                        <tr>
+                            <td colspan="7" class="table-empty-cell">No teachers found</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($teachers as $teacher): ?>
+                            <tr>
+                                <td><?= htmlspecialchars((string)$teacher['full_name']) ?></td>
+                                <td><?= htmlspecialchars((string)$teacher['email']) ?></td>
+                                <td><?= htmlspecialchars((string)($teacher['employee_code'] ?: '—')) ?></td>
+                                <td><?= htmlspecialchars((string)($teacher['phone'] ?: '—')) ?></td>
+                                <td><?= htmlspecialchars((string)($teacher['qualification'] ?: '—')) ?></td>
+                                <td>
+                                    <span class="pill <?= (int)$teacher['is_active'] === 1 ? 'active' : 'inactive' ?>">
+                                        <?= (int)$teacher['is_active'] === 1 ? 'Active' : 'Inactive' ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-menu">
+                                        <button type="button" class="action-btn" onclick="toggleMenu(this)">⋮</button>
+                                        <div class="action-dropdown">
+                                            <button type="button" onclick="openEditModal(<?= (int)$teacher['teacher_id'] ?>, '<?= htmlspecialchars($teacher['employee_code'] ?? '') ?>', '<?= htmlspecialchars($teacher['phone'] ?? '') ?>', '<?= htmlspecialchars($teacher['qualification'] ?? '') ?>')">Edit Details</button>
+                                            <?php if ((int)$teacher['is_active'] === 1): ?>
+                                                <form method="post" class="inline-display">
+                                                    <input type="hidden" name="action" value="toggle_teacher">
+                                                    <input type="hidden" name="teacher_user_id" value="<?= (int)$teacher['id'] ?>">
+                                                    <input type="hidden" name="new_state" value="0">
+                                                    <button type="submit" class="action-danger">Deactivate</button>
+                                                </form>
+                                            <?php else: ?>
+                                                <form method="post" class="inline-display">
+                                                    <input type="hidden" name="action" value="toggle_teacher">
+                                                    <input type="hidden" name="teacher_user_id" value="<?= (int)$teacher['id'] ?>">
+                                                    <input type="hidden" name="new_state" value="1">
+                                                    <button type="submit">Activate</button>
+                                                </form>
+                                            <?php endif; ?>
+                                            <button type="button" onclick="openPasswordModal(<?= (int)$teacher['id'] ?>, '<?= htmlspecialchars($teacher['full_name']) ?>')">Reset Password</button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</section>
+
+<div id="form-create-teacher" class="collapsible-form">
+    <section class="card">
         <h3>Create Teacher</h3>
         <form method="post" class="form-grid form-grid-wide">
             <input type="hidden" name="action" value="create_teacher">
@@ -210,82 +287,11 @@ require __DIR__ . '/../../includes/header.php';
             <button type="submit">Create Teacher Account</button>
         </form>
     </section>
-
-    <section class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h3>Teachers</h3>
-            <form method="get" class="filter-bar" style="margin-bottom:0;">
-                <input type="text" name="search" placeholder="Search name/email/code" value="<?= htmlspecialchars($searchQuery) ?>">
-                <button type="submit">Search</button>
-            </form>
-        </div>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Employee Code</th>
-                        <th>Phone</th>
-                        <th>Qualification</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($teachers)): ?>
-                        <tr>
-                            <td colspan="7" style="text-align:center; padding: 2rem;">No teachers found</td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($teachers as $teacher): ?>
-                            <tr>
-                                <td><?= htmlspecialchars((string)$teacher['full_name']) ?></td>
-                                <td><?= htmlspecialchars((string)$teacher['email']) ?></td>
-                                <td><?= htmlspecialchars((string)($teacher['employee_code'] ?: '—')) ?></td>
-                                <td><?= htmlspecialchars((string)($teacher['phone'] ?: '—')) ?></td>
-                                <td><?= htmlspecialchars((string)($teacher['qualification'] ?: '—')) ?></td>
-                                <td>
-                                    <span class="pill <?= (int)$teacher['is_active'] === 1 ? 'active' : 'inactive' ?>">
-                                        <?= (int)$teacher['is_active'] === 1 ? 'Active' : 'Inactive' ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="action-menu">
-                                        <button class="action-btn" onclick="toggleMenu(this)">⋮</button>
-                                        <div class="action-dropdown" style="display:none;">
-                                            <button type="button" onclick="openEditModal(<?= (int)$teacher['teacher_id'] ?>, '<?= htmlspecialchars($teacher['employee_code'] ?? '') ?>', '<?= htmlspecialchars($teacher['phone'] ?? '') ?>', '<?= htmlspecialchars($teacher['qualification'] ?? '') ?>')">Edit Details</button>
-                                            <?php if ((int)$teacher['is_active'] === 1): ?>
-                                                <form method="post" style="display:inline;">
-                                                    <input type="hidden" name="action" value="toggle_teacher">
-                                                    <input type="hidden" name="teacher_user_id" value="<?= (int)$teacher['id'] ?>">
-                                                    <input type="hidden" name="new_state" value="0">
-                                                    <button type="submit" class="action-danger">Deactivate</button>
-                                                </form>
-                                            <?php else: ?>
-                                                <form method="post" style="display:inline;">
-                                                    <input type="hidden" name="action" value="toggle_teacher">
-                                                    <input type="hidden" name="teacher_user_id" value="<?= (int)$teacher['id'] ?>">
-                                                    <input type="hidden" name="new_state" value="1">
-                                                    <button type="submit">Activate</button>
-                                                </form>
-                                            <?php endif; ?>
-                                            <button type="button" onclick="openPasswordModal(<?= (int)$teacher['id'] ?>, '<?= htmlspecialchars($teacher['full_name']) ?>')">Reset Password</button>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </section>
-</section>
+</div>
 
 <!-- Edit Teacher Modal -->
-<div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:2rem; border-radius:8px; width:90%; max-width:400px;">
+<div id="editModal" class="modal-shell">
+    <div class="modal-shell-panel">
         <h3>Edit Teacher Details</h3>
         <form method="post" class="form-grid form-grid-wide">
             <input type="hidden" name="action" value="update_teacher">
@@ -300,17 +306,17 @@ require __DIR__ . '/../../includes/header.php';
             <label>Qualification (optional)</label>
             <input type="text" name="qualification" id="editQualification" placeholder="e.g., B.Sc, B.Ed">
 
-            <div style="display:flex; gap:1rem; margin-top:1rem;">
-                <button type="submit" style="flex:1;">Save Changes</button>
-                <button type="button" onclick="closeEditModal()" style="flex:1; background:#999;">Cancel</button>
+            <div class="modal-shell-actions">
+                <button type="submit">Save Changes</button>
+                <button type="button" onclick="closeEditModal()" class="btn-neutral">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Password Reset Modal -->
-<div id="passwordModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:2rem; border-radius:8px; width:90%; max-width:400px;">
+<div id="passwordModal" class="modal-shell">
+    <div class="modal-shell-panel">
         <h3>Reset Password</h3>
         <p id="passwordTeacherName"></p>
         <form method="post" class="form-grid form-grid-wide">
@@ -320,9 +326,9 @@ require __DIR__ . '/../../includes/header.php';
             <label>New Password</label>
             <input type="text" name="new_password" required placeholder="Enter new password">
 
-            <div style="display:flex; gap:1rem; margin-top:1rem;">
-                <button type="submit" style="flex:1;">Reset Password</button>
-                <button type="button" onclick="closePasswordModal()" style="flex:1; background:#999;">Cancel</button>
+            <div class="modal-shell-actions">
+                <button type="submit">Reset Password</button>
+                <button type="button" onclick="closePasswordModal()" class="btn-neutral">Cancel</button>
             </div>
         </form>
     </div>
@@ -331,7 +337,8 @@ require __DIR__ . '/../../includes/header.php';
 <script>
 function toggleMenu(btn) {
     const dropdown = btn.nextElementSibling;
-    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    const isOpen = window.getComputedStyle(dropdown).display !== 'none';
+    dropdown.style.display = isOpen ? 'none' : 'block';
 }
 
 function openEditModal(teacherId, employeeCode, phone, qualification) {

@@ -53,9 +53,6 @@ function ensure_student_credentials_table(PDO $pdo): void
     );
 }
 
-// Get search params
-$searchName = trim($_GET['search_name'] ?? '');
-$searchNo = trim($_GET['search_no'] ?? '');
 
 $baseSql =
     'SELECT
@@ -69,7 +66,7 @@ $baseSql =
         su.email AS student_email,
         pu.full_name AS parent_name,
         pu.email AS parent_email,
-        CONCAT(c.class_name, " - ", c.section) AS class_label
+        c.class_name AS class_label
      FROM students s
      LEFT JOIN users su ON su.id = s.user_id
      LEFT JOIN parent_student ps ON ps.student_id = s.id
@@ -87,21 +84,13 @@ if ($role === ROLE_TEACHER) {
     $teacherId = (int)($teacherIdStatement->fetchColumn() ?: 0);
 
     if ($teacherId > 0) {
-        $whereClauses[] = '(c.class_teacher_id = :teacher_id OR EXISTS (SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id AND cs.teacher_id = :teacher_id))';
+        $whereClauses[] = 'c.class_teacher_id = :teacher_id';
         $params['teacher_id'] = $teacherId;
     } else {
         $whereClauses[] = '1 = 0'; // No teacher profile
     }
 }
 
-if ($searchName !== '') {
-    $whereClauses[] = '(su.full_name LIKE :search_name OR pu.full_name LIKE :search_name)';
-    $params['search_name'] = '%' . $searchName . '%';
-}
-if ($searchNo !== '') {
-    $whereClauses[] = 's.admission_no LIKE :search_no';
-    $params['search_no'] = '%' . $searchNo . '%';
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canEditStudents) {
     $action = $_POST['action'] ?? '';
@@ -288,7 +277,7 @@ require __DIR__ . '/../../includes/header.php';
 ?>
 <section class="card">
     <h2>Student Management</h2>
-    <p>View enrolled students, linked parent account, and class mapping.</p>
+    <p>View enrolled students, linked parent account, and course mapping.</p>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -324,22 +313,10 @@ require __DIR__ . '/../../includes/header.php';
         </div>
     <?php endif; ?>
 
-    <div style="display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
-        <form method="get" class="filter-bar" style="margin-bottom:0;">
-            <input type="text" name="search_name" placeholder="Search by Student or Parent" value="<?= htmlspecialchars($searchName) ?>">
-            <input type="text" name="search_no" placeholder="Admission No" value="<?= htmlspecialchars($searchNo) ?>">
-            <button type="submit">Search</button>
-            <a href="?clear=1" style="font-size:0.85rem; color:var(--primary); text-decoration:none; font-weight:600;">Clear</a>
-        </form>
 
+    <div class="toolbar-row toolbar-row-end">
         <?php if ($canEditStudents): ?>
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <a class="nav-item" href="/school-erp/modules/admission/export_students_excel.php?search_name=<?= urlencode($searchName) ?>&search_no=<?= urlencode($searchNo) ?>">Download Excel</a>
-                <form method="post" action="/school-erp/modules/admission/import_students_excel.php" enctype="multipart/form-data" class="inline-form">
-                    <input type="file" name="excel_file" accept=".csv,.txt" required>
-                    <button type="submit">Upload Excel</button>
-                </form>
-            </div>
+            <a class="nav-item" href="/school-erp/modules/admission/export_students_excel.php">Download Excel</a>
         <?php endif; ?>
     </div>
 
@@ -351,7 +328,7 @@ require __DIR__ . '/../../includes/header.php';
                     <th>Admission No</th>
                     <th>Student</th>
                     <th>Parent</th>
-                    <th>Class</th>
+                    <th>Course</th>
                     <th>Status</th>
                     <th>Created</th>
                     <?php if ($canEditStudents): ?>
@@ -394,11 +371,6 @@ require __DIR__ . '/../../includes/header.php';
                                         <input type="hidden" name="action" value="regenerate_credentials">
                                         <input type="hidden" name="student_id" value="<?= (int)$student['id'] ?>">
                                         <button type="submit" class="btn-compact">Regenerate Credentials</button>
-                                    </form>
-                                    <form method="post" class="inline-form student-action-form" onsubmit="return confirm('Delete this student permanently? This action cannot be undone.');">
-                                        <input type="hidden" name="action" value="delete_student">
-                                        <input type="hidden" name="student_id" value="<?= (int)$student['id'] ?>">
-                                        <button type="submit" class="danger">Delete</button>
                                     </form>
                                 </div>
                             </td>

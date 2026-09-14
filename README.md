@@ -198,6 +198,22 @@ Login users:
 - Student: `student@demo.local` / `Student@123`
 - Parent: `parent@demo.local` / `Parent@123`
 
+## Developer Portal (Separate Login)
+
+Standalone URL:
+
+- `/school-erp/developer/login.php`
+
+Default developer credentials (independent from all role users):
+
+- Username: `devmaster`
+- Password: `DevPortal@123`
+
+You can override these via environment variables:
+
+- `DEVELOPER_PORTAL_USER`
+- `DEVELOPER_PORTAL_PASS`
+
 ## Next Build Steps
 
 1. Stripe API integration (optional second gateway)

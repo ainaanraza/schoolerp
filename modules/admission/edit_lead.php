@@ -33,6 +33,12 @@ function ensure_lead_profile_columns(PDO $pdo): void
     if (!isset($columns['class_id'])) {
         $pdo->exec('ALTER TABLE leads ADD COLUMN class_id INT NULL AFTER phone');
     }
+    if (!isset($columns['admission_concession_amount'])) {
+        $pdo->exec('ALTER TABLE leads ADD COLUMN admission_concession_amount DECIMAL(10,2) NULL AFTER notes');
+    }
+    if (!isset($columns['admission_concession_note'])) {
+        $pdo->exec('ALTER TABLE leads ADD COLUMN admission_concession_note TEXT NULL AFTER admission_concession_amount');
+    }
 }
 
 ensure_lead_profile_columns($pdo);
@@ -112,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Student name is required.';
     }
     if ($classId <= 0) {
-        $errors[] = 'Please select a class.';
+        $errors[] = 'Please select a course.';
     }
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Invalid student email format.';
@@ -141,9 +147,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $classStmt->execute(['class_id' => $classId]);
         $selectedClass = $classStmt->fetch();
         if (!$selectedClass) {
-            $errors[] = 'Selected class is invalid.';
+            $errors[] = 'Selected course is invalid.';
         } else {
-            $classApplied = (string)$selectedClass['class_name'] . ' - ' . (string)$selectedClass['section'];
+            $classApplied = (string)$selectedClass['class_name'];
         }
     }
 
@@ -264,7 +270,7 @@ require __DIR__ . '/../../includes/header.php';
 ?>
 <section class="card">
     <h2>Edit Lead</h2>
-    <p>View and update lead profile details, class preference, and photo.</p>
+    <p>View and update lead profile details, course preference, and photo.</p>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -306,12 +312,12 @@ require __DIR__ . '/../../includes/header.php';
         <label>Student Phone</label>
         <input type="text" name="phone" value="<?= htmlspecialchars((string)($lead['phone'] ?? '')) ?>">
 
-        <label>Class Applied</label>
+        <label>Course Applied</label>
         <select name="class_id" required>
-            <option value="">Select class</option>
+            <option value="">Select course</option>
             <?php foreach ($classOptions as $class): ?>
                 <option value="<?= (int)$class['id'] ?>" <?= (int)($lead['class_id'] ?? 0) === (int)$class['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars((string)$class['class_name'] . ' - ' . (string)$class['section'] . ' (' . (string)$class['session_title'] . ')') ?>
+                    <?= htmlspecialchars((string)$class['class_name'] . ' (' . (string)$class['session_title'] . ')') ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -341,15 +347,15 @@ require __DIR__ . '/../../includes/header.php';
             <div class="photo-preview" id="photoPreview">
                 <?php if (!empty($lead['photo_path'])): ?>
                     <img id="previewImg" src="<?= htmlspecialchars((string)$lead['photo_path']) ?>" alt="Lead Photo">
-                    <span id="previewPlaceholder" style="display:none;">No photo selected</span>
+                    <span id="previewPlaceholder" class="is-hidden">No photo selected</span>
                 <?php else: ?>
-                    <img id="previewImg" src="" alt="Lead Photo" style="display:none;">
+                    <img id="previewImg" src="" alt="Lead Photo" class="is-hidden">
                     <span id="previewPlaceholder">No photo selected</span>
                 <?php endif; ?>
             </div>
             <div class="photo-actions">
                 <label class="photo-btn" for="photoFileInput">Upload</label>
-                <input type="file" id="photoFileInput" name="photo" accept="image/jpeg,image/png,image/webp" style="display:none;">
+                <input type="file" id="photoFileInput" name="photo" accept="image/jpeg,image/png,image/webp" class="is-hidden">
                 <button type="button" class="photo-btn" id="cameraBtn">Camera</button>
                 <button type="button" class="photo-btn photo-btn-danger" id="clearPhotoBtn">Clear</button>
             </div>
@@ -357,10 +363,10 @@ require __DIR__ . '/../../includes/header.php';
             <input type="hidden" name="remove_photo" id="removePhotoInput" value="0">
         </div>
 
-        <div id="cameraModal" class="camera-modal" style="display:none;">
+        <div id="cameraModal" class="camera-modal is-hidden">
             <div class="camera-modal-inner">
                 <video id="cameraFeed" autoplay playsinline></video>
-                <canvas id="cameraCanvas" style="display:none;"></canvas>
+            <canvas id="cameraCanvas" class="is-hidden"></canvas>
                 <div class="camera-modal-actions">
                     <button type="button" id="captureBtn" class="photo-btn">Capture</button>
                     <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>

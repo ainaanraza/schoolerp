@@ -95,9 +95,14 @@ $pageTitle = 'Student Dashboard';
 require __DIR__ . '/../includes/header.php';
 ?>
 <div class="dashboard-content">
-    <section class="card" style="margin-bottom: 1rem;">
+    <section class="card dashboard-hero">
+        <h3>My Learning Snapshot</h3>
+        <p>Review attendance consistency, fee standing, homework load, and notifications in one place.</p>
+    </section>
+
+    <section class="card">
         <h3>Attendance Overview</h3>
-        <div class="metrics-grid" style="margin-bottom: 0;">
+        <div class="metrics-grid metrics-grid-tight">
             <a class="metric-card" href="/school-erp/modules/attendance/view.php#section-table">
                 <p class="metric-label">Attendance %</p>
                 <p class="metric-value"><?= number_format($attendancePercent, 1) ?>%</p>

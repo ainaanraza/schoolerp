@@ -60,12 +60,14 @@ $classExistsStmt = $pdo->prepare('SELECT id FROM classes WHERE id = :id LIMIT 1'
 $insertStmt = $pdo->prepare(
     'INSERT INTO leads (
         lead_name, guardian_name, guardian_phone, guardian_email, email, phone,
-        class_id, class_applied, status, admission_fee_paid, admission_fee_amount,
-        payment_mode, payment_confirmed_at, source, notes, created_by
+          class_id, class_applied, status, admission_fee_paid, admission_fee_amount,
+          admission_concession_amount, admission_concession_note,
+          payment_mode, payment_confirmed_at, source, notes, created_by
      ) VALUES (
         :lead_name, :guardian_name, :guardian_phone, :guardian_email, :email, :phone,
-        :class_id, :class_applied, :status, :admission_fee_paid, :admission_fee_amount,
-        :payment_mode, :payment_confirmed_at, :source, :notes, :created_by
+          :class_id, :class_applied, :status, :admission_fee_paid, :admission_fee_amount,
+          :admission_concession_amount, :admission_concession_note,
+          :payment_mode, :payment_confirmed_at, :source, :notes, :created_by
      )'
 );
 
@@ -92,6 +94,11 @@ while (($row = fgetcsv($handle)) !== false) {
     $amount = $amountValue !== '' && is_numeric($amountValue)
         ? (float)$amountValue
         : 0.0;
+    $concessionValue = csv_value($data, 'admission_concession_amount');
+    $concessionAmount = $concessionValue !== '' && is_numeric($concessionValue)
+        ? (float)$concessionValue
+        : 0.0;
+    $concessionNote = csv_value($data, 'admission_concession_note');
     $modeValue = csv_value($data, 'payment_mode');
     $mode = in_array($modeValue, $allowedModes, true) ? $modeValue : null;
     $classIdValue = csv_value($data, 'class_id');
@@ -116,6 +123,8 @@ while (($row = fgetcsv($handle)) !== false) {
             'status' => $status,
             'admission_fee_paid' => $amount > 0 ? 1 : 0,
             'admission_fee_amount' => $amount > 0 ? $amount : null,
+            'admission_concession_amount' => $concessionAmount > 0 ? $concessionAmount : null,
+            'admission_concession_note' => $concessionNote !== '' ? $concessionNote : null,
             'payment_mode' => $mode,
             'payment_confirmed_at' => $amount > 0 ? date('Y-m-d H:i:s') : null,
             'source' => csv_value($data, 'source') !== '' ? csv_value($data, 'source') : 'manual',

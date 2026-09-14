@@ -4,6 +4,11 @@ require_once __DIR__ . '/../../includes/bootstrap.php';
 $errors = [];
 $success = null;
 
+// Public link for sharing
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+$admissionFormLink = $scheme . '://' . $host . '/school-erp/modules/admission/apply.php';
+
 function ensure_lead_profile_columns(PDO $pdo): void
 {
     $columns = [];
@@ -29,6 +34,12 @@ function ensure_lead_profile_columns(PDO $pdo): void
     }
     if (!isset($columns['class_id'])) {
         $pdo->exec('ALTER TABLE leads ADD COLUMN class_id INT NULL AFTER phone');
+    }
+    if (!isset($columns['admission_concession_amount'])) {
+        $pdo->exec('ALTER TABLE leads ADD COLUMN admission_concession_amount DECIMAL(10,2) NULL AFTER notes');
+    }
+    if (!isset($columns['admission_concession_note'])) {
+        $pdo->exec('ALTER TABLE leads ADD COLUMN admission_concession_note TEXT NULL AFTER admission_concession_amount');
     }
 }
 
@@ -62,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $photoPath = null;
 
     if ($leadName === '' || $classId <= 0) {
-        $errors[] = 'Student name and class selection are required.';
+        $errors[] = 'Student name and course selection are required.';
     }
         $selectedClass = null;
         if ($classId > 0) {
@@ -75,9 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $classStatement->execute(['class_id' => $classId]);
             $selectedClass = $classStatement->fetch();
             if (!$selectedClass) {
-                $errors[] = 'Selected class is invalid.';
+                $errors[] = 'Selected course is invalid.';
             } else {
-                $classApplied = (string)$selectedClass['class_name'] . ' - ' . (string)$selectedClass['section'];
+                $classApplied = (string)$selectedClass['class_name'];
             }
         }
 
@@ -168,6 +179,9 @@ require __DIR__ . '/../../includes/header.php';
 ?>
 <section class="card">
     <h2>Admission Application Form</h2>
+    <?php if (is_logged_in() && in_array(current_role(), [ROLE_ADMIN, ROLE_SUPER_ADMIN], true)): ?>
+        <p class="admission-link-note">Public link for admissions: <a href="<?= htmlspecialchars($admissionFormLink) ?>" target="_blank"><?= htmlspecialchars($admissionFormLink) ?></a></p>
+    <?php endif; ?>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -199,12 +213,12 @@ require __DIR__ . '/../../includes/header.php';
         <label>Student Phone</label>
         <input type="text" name="phone">
 
-        <label>Class Applied</label>
+        <label>Course Applied</label>
         <select name="class_id" required>
-            <option value="">Select class</option>
+            <option value="">Select course</option>
             <?php foreach ($classOptions as $class): ?>
                 <option value="<?= (int)$class['id'] ?>">
-                    <?= htmlspecialchars((string)$class['class_name'] . ' - ' . (string)$class['section'] . ' (' . (string)$class['session_title'] . ')') ?>
+                    <?= htmlspecialchars((string)$class['class_name'] . ' (' . (string)$class['session_title'] . ')') ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -227,23 +241,23 @@ require __DIR__ . '/../../includes/header.php';
         <label>Student Photo</label>
         <div class="photo-upload-area" id="photoArea">
             <div class="photo-preview" id="photoPreview">
-                <img id="previewImg" src="" alt="Preview" style="display:none;">
+                <img id="previewImg" src="" alt="Preview" class="is-hidden">
                 <span id="previewPlaceholder">No photo selected</span>
             </div>
             <div class="photo-actions">
                 <label class="photo-btn" for="photoFileInput">📁 Upload</label>
-                <input type="file" id="photoFileInput" name="photo" accept="image/jpeg,image/png,image/webp" style="display:none;">
+                <input type="file" id="photoFileInput" name="photo" accept="image/jpeg,image/png,image/webp" class="is-hidden">
                 <button type="button" class="photo-btn" id="cameraBtn">📷 Camera</button>
-                <button type="button" class="photo-btn photo-btn-danger" id="clearPhotoBtn" style="display:none;">✕ Clear</button>
+                <button type="button" class="photo-btn photo-btn-danger is-hidden" id="clearPhotoBtn">✕ Clear</button>
             </div>
             <input type="hidden" name="camera_photo" id="cameraPhotoData" value="">
         </div>
 
         <!-- Camera Modal -->
-        <div id="cameraModal" class="camera-modal" style="display:none;">
+        <div id="cameraModal" class="camera-modal is-hidden">
             <div class="camera-modal-inner">
                 <video id="cameraFeed" autoplay playsinline></video>
-                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <canvas id="cameraCanvas" class="is-hidden"></canvas>
                 <div class="camera-modal-actions">
                     <button type="button" id="captureBtn" class="photo-btn">📸 Capture</button>
                     <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>

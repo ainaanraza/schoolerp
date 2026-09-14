@@ -7,11 +7,11 @@ $success = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'adjust_fee') {
     $studentFeeId = (int)($_POST['student_fee_id'] ?? 0);
-    $adjustmentType = $_POST['adjustment_type'] ?? 'discount';
+    $adjustmentType = 'override';
     $amount = (float)($_POST['amount'] ?? 0);
     $reason = trim($_POST['reason'] ?? '');
 
-    if ($studentFeeId <= 0 || !in_array($adjustmentType, ['discount', 'override'], true) || $amount < 0) {
+    if ($studentFeeId <= 0 || !in_array($adjustmentType, ['override'], true) || $amount < 0) {
         $errors[] = 'Invalid adjustment request.';
     } else {
         try {
@@ -31,14 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'adjus
 
             $newDiscount = $currentDiscount;
             $newPayable = (float)$fee['payable_amount'];
-
-            if ($adjustmentType === 'discount') {
-                $newDiscount = $currentDiscount + $amount;
-                if ($newDiscount > $totalAmount) {
-                    $newDiscount = $totalAmount;
-                }
-                $newPayable = max(0, $totalAmount - $newDiscount);
-            }
 
             if ($adjustmentType === 'override') {
                 $newPayable = max(0, $amount);
@@ -86,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'adjus
             ]);
 
             $pdo->commit();
-            $success[] = 'Fee adjustment applied successfully.';
+            $success[] = 'Payable override applied successfully.';
         } catch (Throwable $throwable) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -154,11 +146,14 @@ $sfSearchStatus = trim($_GET['sf_status'] ?? '');
 $adjustableFeeSql =
     'SELECT sf.id, sf.period_label, sf.total_amount, sf.discount_amount, sf.payable_amount, sf.paid_amount, sf.status,
             fs.fee_type, fs.fee_title,
-            su.full_name AS student_name
+            su.full_name AS student_name,
+            l.admission_concession_amount,
+            l.admission_concession_note
      FROM student_fees sf
      JOIN fee_structures fs ON fs.id = sf.fee_structure_id
      JOIN students s ON s.id = sf.student_id
      LEFT JOIN users su ON su.id = s.user_id
+     LEFT JOIN leads l ON l.converted_student_id = s.id
      WHERE 1=1';
 
 $sfParams = [];
@@ -176,6 +171,22 @@ $adjustableFeeSql .= ' ORDER BY sf.id DESC LIMIT 200';
 $sfStmt = $pdo->prepare($adjustableFeeSql);
 $sfStmt->execute($sfParams);
 $adjustableFees = $sfStmt->fetchAll();
+
+$concessionFees = $pdo->query(
+    'SELECT sf.id, sf.period_label, sf.payable_amount, sf.discount_amount,
+            fs.fee_title, fs.fee_type,
+            su.full_name AS student_name,
+            l.admission_concession_amount,
+            l.admission_concession_note
+     FROM student_fees sf
+     JOIN fee_structures fs ON fs.id = sf.fee_structure_id
+     JOIN students s ON s.id = sf.student_id
+     LEFT JOIN users su ON su.id = s.user_id
+     LEFT JOIN leads l ON l.converted_student_id = s.id
+     WHERE COALESCE(l.admission_concession_amount, 0) > 0
+     ORDER BY l.id DESC, sf.id DESC
+     LIMIT 50'
+)->fetchAll();
 
 $pageTitle = 'Super Admin Finance Control';
 require __DIR__ . '/../../includes/header.php';
@@ -228,80 +239,140 @@ require __DIR__ . '/../../includes/header.php';
 </section>
 
 <section class="card">
-    <h3>Discount / Override (Super Admin Only)</h3>
-    <form method="post" class="form-grid form-grid-wide">
-        <input type="hidden" name="action" value="adjust_fee">
+    <div class="form-header-actions">
+        <h3>Finance Activity</h3>
+        <button type="button" class="btn-toggle-form" onclick="toggleForm('form-adjustment', this)">+ Set Payable Override</button>
+    </div>
 
-        <label>Student Fee Record</label>
-        <select name="student_fee_id" required>
-            <option value="">Select fee record</option>
-            <?php foreach ($adjustableFees as $fee): ?>
-                <option value="<?= (int)$fee['id'] ?>">
-                    <?= htmlspecialchars('#' . $fee['id'] . ' | ' . $fee['student_name'] . ' | ' . $fee['fee_title'] . ' | ' . ucwords(str_replace('_', ' ', (string)$fee['fee_type'])) . ' | ' . $fee['period_label'] . ' | payable ' . number_format((float)$fee['payable_amount'], 2)) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
+    <div class="finance-tabs" role="tablist" aria-label="Finance activity tabs">
+        <button type="button" class="finance-tab active" data-finance-tab="tab-adjustments" onclick="switchFinanceTab('tab-adjustments')">
+            Recent Adjustments
+            <span class="finance-tab-count"><?= count($adjustmentHistory) ?></span>
+        </button>
+        <button type="button" class="finance-tab" data-finance-tab="tab-concessions" onclick="switchFinanceTab('tab-concessions')">
+            Admission Concessions On File
+            <span class="finance-tab-count"><?= count($concessionFees) ?></span>
+        </button>
+    </div>
 
-        <label>Adjustment Type</label>
-        <select name="adjustment_type" required>
-            <option value="discount">Discount (reduce payable)</option>
-            <option value="override">Override (set final payable)</option>
-        </select>
-
-        <label>Amount</label>
-        <input type="number" name="amount" min="0" step="0.01" required>
-
-        <label>Reason</label>
-        <input type="text" name="reason" placeholder="Scholarship / correction / special approval">
-
-        <button type="submit">Apply Adjustment</button>
-    </form>
-</section>
-
-<section class="card">
-    <h3>Recent Adjustments</h3>
-    <div class="table-wrap" id="section-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Student</th>
-                    <th>Fee Row</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th>Reason</th>
-                    <th>Approved By</th>
-                    <th>Time</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($adjustmentHistory as $row): ?>
+    <div id="tab-adjustments" class="finance-tab-panel active">
+        <div class="table-wrap" id="section-table">
+            <table class="compact-table">
+                <thead>
                     <tr>
-                        <td><?= (int)$row['id'] ?></td>
-                        <td><?= htmlspecialchars((string)$row['student_name']) ?></td>
-                        <td><?= (int)$row['student_fee_id'] ?></td>
-                        <td><?= htmlspecialchars($row['adjustment_type']) ?></td>
-                        <td><?= number_format((float)$row['amount'], 2) ?></td>
-                        <td><?= htmlspecialchars((string)$row['reason']) ?></td>
-                        <td><?= htmlspecialchars((string)$row['approved_by_name']) ?></td>
-                        <td><?= htmlspecialchars((string)$row['created_at']) ?></td>
-                        <td>
-                            <form method="post" class="inline-form" onsubmit="return confirm('Delete this adjustment record?');">
-                                <input type="hidden" name="action" value="delete_adjustment">
-                                <input type="hidden" name="adjustment_id" value="<?= (int)$row['id'] ?>">
-                                <button type="submit" class="danger">Delete</button>
-                            </form>
-                        </td>
+                        <th>ID</th>
+                        <th>Student</th>
+                        <th>Fee Row</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Reason</th>
+                        <th>Approved By</th>
+                        <th>Time</th>
                     </tr>
-                <?php endforeach; ?>
-                <?php if (empty($adjustmentHistory)): ?>
+                </thead>
+                <tbody>
+                    <?php foreach ($adjustmentHistory as $row): ?>
+                        <tr>
+                            <td><?= (int)$row['id'] ?></td>
+                            <td><?= htmlspecialchars((string)$row['student_name']) ?></td>
+                            <td><?= (int)$row['student_fee_id'] ?></td>
+                            <td><?= htmlspecialchars($row['adjustment_type']) ?></td>
+                            <td><?= number_format((float)$row['amount'], 2) ?></td>
+                            <td><?= htmlspecialchars((string)$row['reason']) ?></td>
+                            <td><?= htmlspecialchars((string)$row['approved_by_name']) ?></td>
+                            <td><?= htmlspecialchars((string)$row['created_at']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($adjustmentHistory)): ?>
+                        <tr>
+                            <td colspan="8">No adjustments made yet.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-concessions" class="finance-tab-panel">
+        <div class="table-wrap">
+            <table class="compact-table">
+                <thead>
                     <tr>
-                        <td colspan="9">No adjustments made yet.</td>
+                        <th>Student</th>
+                        <th>Fee</th>
+                        <th>Period</th>
+                        <th>Concession</th>
+                        <th>Note</th>
+                        <th>Payable</th>
                     </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php foreach ($concessionFees as $row): ?>
+                        <tr>
+                            <td><?= htmlspecialchars((string)$row['student_name']) ?></td>
+                            <td><?= htmlspecialchars((string)$row['fee_title']) ?></td>
+                            <td><?= htmlspecialchars((string)$row['period_label']) ?></td>
+                            <td>₹<?= number_format((float)$row['admission_concession_amount'], 2) ?></td>
+                            <td><?= htmlspecialchars((string)$row['admission_concession_note']) ?></td>
+                            <td>₹<?= number_format((float)$row['payable_amount'], 2) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($concessionFees)): ?>
+                        <tr>
+                            <td colspan="6">No admission concessions found.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </section>
+
+<div id="form-adjustment" class="collapsible-form">
+    <section class="card">
+        <h3>Payable Override (Super Admin Only)</h3>
+        <form method="post" class="form-grid form-grid-wide">
+            <input type="hidden" name="action" value="adjust_fee">
+            <input type="hidden" name="adjustment_type" value="override">
+
+            <label>Student Fee Record</label>
+            <select name="student_fee_id" required>
+                <option value="">Select fee record</option>
+                <?php foreach ($adjustableFees as $fee): ?>
+                    <option value="<?= (int)$fee['id'] ?>">
+                        <?= htmlspecialchars('#' . $fee['id'] . ' | ' . $fee['student_name'] . ' | ' . $fee['fee_title'] . ' | ' . ucwords(str_replace('_', ' ', (string)$fee['fee_type'])) . ' | ' . $fee['period_label'] . ' | payable ' . number_format((float)$fee['payable_amount'], 2) . ((float)($fee['admission_concession_amount'] ?? 0) > 0 ? ' | concession ₹' . number_format((float)$fee['admission_concession_amount'], 2) . (!empty($fee['admission_concession_note']) ? ' | ' . $fee['admission_concession_note'] : '') : '')) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <label>Final Payable Amount</label>
+            <input type="number" name="amount" min="0" step="0.01" required>
+
+            <label>Reason</label>
+            <input type="text" name="reason" placeholder="Scholarship / correction / special approval">
+
+            <button type="submit">Apply Override</button>
+        </form>
+    </section>
+</div>
+
+<script>
+function switchFinanceTab(tabId) {
+    document.querySelectorAll('.finance-tab').forEach(function (tab) {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.finance-tab-panel').forEach(function (panel) {
+        panel.classList.remove('active');
+    });
+
+    var selectedTab = document.querySelector('.finance-tab[data-finance-tab="' + tabId + '"]');
+    var selectedPanel = document.getElementById(tabId);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+    if (selectedPanel) {
+        selectedPanel.classList.add('active');
+    }
+}
+</script>
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

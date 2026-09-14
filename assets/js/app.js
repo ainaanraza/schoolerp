@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
             dataRows.push(row);
         });
 
-        // Skip tables with 0 or 1 data rows
+        // Skip tables with no data rows
         if (dataRows.length < 1) return;
 
         // Build search bar container
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var input = document.createElement('input');
         input.type = 'text';
-        input.placeholder = '\uD83D\uDD0D Search this table...';
+        input.placeholder = 'Search records...';
         input.className = 'table-search-input';
 
         var count = document.createElement('span');

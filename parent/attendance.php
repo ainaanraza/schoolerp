@@ -133,7 +133,7 @@ require __DIR__ . '/../includes/header.php';
                 <tr>
                     <th>Date</th>
                     <th>Student</th>
-                    <th>Class</th>
+                    <th>Course</th>
                     <th>Status</th>
                     <th>Remarks</th>
                 </tr>
@@ -143,7 +143,7 @@ require __DIR__ . '/../includes/header.php';
                     <tr>
                         <td><?= htmlspecialchars((string)$record['attendance_date']) ?></td>
                         <td><?= htmlspecialchars((string)$record['student_name']) ?></td>
-                        <td><?= htmlspecialchars((string)$record['class_name'] . ' - ' . (string)$record['section']) ?></td>
+                        <td><?= htmlspecialchars((string)$record['class_name']) ?></td>
                         <td><span class="pill"><?= htmlspecialchars((string)$record['status']) ?></span></td>
                         <td><?= htmlspecialchars((string)($record['remarks'] ?? '')) ?></td>
                     </tr>

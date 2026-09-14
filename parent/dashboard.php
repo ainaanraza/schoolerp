@@ -88,6 +88,11 @@ $pageTitle = 'Parent Dashboard';
 require __DIR__ . '/../includes/header.php';
 ?>
 <div class="dashboard-content">
+    <section class="card dashboard-hero">
+        <h3>Family Insights</h3>
+        <p>See your children, attendance alerts, fee obligations, and school notifications from one organized workspace.</p>
+    </section>
+
     <div class="metrics-grid">
         <a class="metric-card" href="/school-erp/parent/children.php#section-table">
             <p class="metric-label">Linked Children</p>

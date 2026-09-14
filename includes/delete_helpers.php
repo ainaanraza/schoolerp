@@ -192,9 +192,6 @@ function cascade_delete_class(PDO $pdo, int $classId): void
     $deleteAttendance = $pdo->prepare('DELETE FROM attendance WHERE class_id = :class_id');
     $deleteAttendance->execute(['class_id' => $classId]);
 
-    $deleteMappings = $pdo->prepare('DELETE FROM class_subjects WHERE class_id = :class_id');
-    $deleteMappings->execute(['class_id' => $classId]);
-
     $deleteEnrollments = $pdo->prepare('DELETE FROM student_class_enrollments WHERE class_id = :class_id');
     $deleteEnrollments->execute(['class_id' => $classId]);
 
@@ -226,9 +223,6 @@ function cascade_delete_subject(PDO $pdo, int $subjectId): void
     $deleteHomework = $pdo->prepare('DELETE FROM homework WHERE subject_id = :subject_id');
     $deleteHomework->execute(['subject_id' => $subjectId]);
 
-    $deleteMappings = $pdo->prepare('DELETE FROM class_subjects WHERE subject_id = :subject_id');
-    $deleteMappings->execute(['subject_id' => $subjectId]);
-
     $deleteSubject = $pdo->prepare('DELETE FROM subjects WHERE id = :subject_id');
     $deleteSubject->execute(['subject_id' => $subjectId]);
 }
@@ -254,9 +248,6 @@ function cascade_delete_staff_user(PDO $pdo, int $userId, string $role): void
         if ($teacherId > 0) {
             $clearClassTeacher = $pdo->prepare('UPDATE classes SET class_teacher_id = NULL WHERE class_teacher_id = :teacher_id');
             $clearClassTeacher->execute(['teacher_id' => $teacherId]);
-
-            $clearSubjectTeacher = $pdo->prepare('UPDATE class_subjects SET teacher_id = NULL WHERE teacher_id = :teacher_id');
-            $clearSubjectTeacher->execute(['teacher_id' => $teacherId]);
 
             $deleteTeacherStmt = $pdo->prepare('DELETE FROM teachers WHERE id = :teacher_id');
             $deleteTeacherStmt->execute(['teacher_id' => $teacherId]);

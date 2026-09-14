@@ -9,7 +9,7 @@ $childrenStatement = $pdo->prepare(
         s.roll_number,
         su.full_name AS student_name,
         ps.relation,
-        CONCAT(c.class_name, " - ", c.section) AS class_label,
+        c.class_name AS course_label,
         sess.title AS session_title
      FROM parents p
      JOIN parent_student ps ON ps.parent_id = p.id
@@ -37,7 +37,7 @@ require __DIR__ . '/../includes/header.php';
                     <th>Admission No</th>
                     <th>Roll</th>
                     <th>Relation</th>
-                    <th>Class</th>
+                    <th>Course</th>
                     <th>Session</th>
                 </tr>
             </thead>
@@ -48,7 +48,7 @@ require __DIR__ . '/../includes/header.php';
                         <td><?= htmlspecialchars((string)$child['admission_no']) ?></td>
                         <td><?= htmlspecialchars((string)($child['roll_number'] ?: '-')) ?></td>
                         <td><?= htmlspecialchars((string)$child['relation']) ?></td>
-                        <td><?= htmlspecialchars((string)($child['class_label'] ?: 'Not assigned')) ?></td>
+                        <td><?= htmlspecialchars((string)($child['course_label'] ?: 'Not assigned')) ?></td>
                         <td><?= htmlspecialchars((string)($child['session_title'] ?: '-')) ?></td>
                     </tr>
                 <?php endforeach; ?>

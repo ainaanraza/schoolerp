@@ -26,6 +26,11 @@ $pageTitle = 'Admin Dashboard';
 require __DIR__ . '/../includes/header.php';
 ?>
 <div class="dashboard-content">
+    <section class="card dashboard-hero">
+        <h3>Operations Desk</h3>
+        <p>Track admissions velocity, student growth, attendance throughput, and collection momentum in real time.</p>
+    </section>
+
     <div class="metrics-grid">
         <a class="metric-card" href="/school-erp/modules/admission/leads.php#section-table">
             <p class="metric-label">New Leads</p>

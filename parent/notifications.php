@@ -131,7 +131,7 @@ require __DIR__ . '/../includes/header.php';
         <button type="submit">Mark All Read</button>
     </form>
 
-    <div class="table-wrap" id="section-table" style="margin-top: 12px;">
+    <div class="table-wrap table-wrap-offset" id="section-table">
         <table>
             <thead>
                 <tr>

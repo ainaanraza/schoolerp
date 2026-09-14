@@ -260,76 +260,34 @@ require __DIR__ . '/../../includes/header.php';
         </div>
     </div>
 
-    <div class="grid-2">
-        <section class="card">
-            <h3>Create Admin</h3>
-            <form method="post" class="form-grid form-grid-wide">
-                <input type="hidden" name="action" value="create_admin">
-
-                <label>Full Name</label>
-                <input type="text" name="full_name" required>
-
-                <label>Email</label>
-                <input type="email" name="email" required>
-
-                <label>Temporary Password</label>
-                <input type="text" name="password" required>
-
-                <button type="submit">Create Admin Account</button>
-            </form>
-        </section>
-
-        <section class="card">
-            <h3>Add Teacher</h3>
-            <form method="post" class="form-grid form-grid-wide">
-                <input type="hidden" name="action" value="create_teacher">
-
-                <label>Full Name *</label>
-                <input type="text" name="full_name" required>
-
-                <label>Email *</label>
-                <input type="email" name="email" required>
-
-                <label>Temporary Password *</label>
-                <input type="text" name="password" required>
-
-                <label>Employee Code (optional)</label>
-                <input type="text" name="employee_code" placeholder="e.g., EMP001">
-
-                <label>Phone (optional)</label>
-                <input type="tel" name="phone" placeholder="e.g., 9876543210">
-
-                <label>Qualification (optional)</label>
-                <input type="text" name="qualification" placeholder="e.g., B.Sc, B.Ed">
-
-                <button type="submit">Create Teacher Account</button>
-            </form>
-        </section>
-    </div>
-
     <section class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div class="form-header-actions">
             <h3>Staff Members</h3>
-            <form method="get" class="filter-bar" style="margin-bottom:0;">
-                <input type="text" name="search" placeholder="Search name/email/code" value="<?= htmlspecialchars($staffSearchQuery) ?>">
-                <button type="submit">Search</button>
-                <a href="?" style="font-size:0.85rem; color:var(--primary); text-decoration:none; font-weight:600; margin-left:0.5rem;">Clear</a>
-            </form>
+            <div class="toolbar-actions-tight">
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-create-admin', this)">+ Add Admin</button>
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-create-teacher', this)">+ Add Teacher</button>
+            </div>
         </div>
 
+        <form method="get" class="filter-bar">
+            <input type="text" name="search" placeholder="Search name/email/code" value="<?= htmlspecialchars($staffSearchQuery) ?>">
+            <button type="submit">Search</button>
+            <a href="?" class="toolbar-link-clear">Clear</a>
+        </form>
+
         <div class="table-wrap" id="section-table">
-            <table>
+            <table class="compact-table staff-table">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Role</th>
                         <th>Name</th>
                         <th>Email</th>
-                        <th>Employee Code</th>
+                        <th>Emp Code</th>
                         <th>Phone</th>
-                        <th>Qualification</th>
+                        <th>Qual.</th>
                         <th>Status</th>
-                        <th>Password Reset</th>
+                        <th>Reset</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -345,26 +303,21 @@ require __DIR__ . '/../../includes/header.php';
                             <td><?= htmlspecialchars((string)($staff['qualification'] ?: '—')) ?></td>
                             <td><span class="pill"><?= (int)$staff['is_active'] === 1 ? 'Active' : 'Inactive' ?></span></td>
                             <td>
-                                <form method="post" class="inline-form">
+                                <form method="post" class="inline-form staff-reset-form">
                                     <input type="hidden" name="action" value="<?= $staff['role'] === ROLE_ADMIN ? 'reset_password' : 'reset_teacher_password' ?>">
                                     <input type="hidden" name="<?= $staff['role'] === ROLE_ADMIN ? 'admin_user_id' : 'teacher_user_id' ?>" value="<?= (int)$staff['id'] ?>">
-                                    <input type="text" name="new_password" placeholder="New password" required>
+                                    <input type="text" name="new_password" placeholder="Password" required>
                                     <button type="submit">Reset</button>
                                 </form>
                             </td>
                             <td>
-                                <form method="post" class="inline-form">
+                                <form method="post" class="inline-form staff-toggle-form">
                                     <input type="hidden" name="action" value="<?= $staff['role'] === ROLE_ADMIN ? 'toggle_admin' : 'toggle_teacher' ?>">
                                     <input type="hidden" name="<?= $staff['role'] === ROLE_ADMIN ? 'admin_user_id' : 'teacher_user_id' ?>" value="<?= (int)$staff['id'] ?>">
                                     <input type="hidden" name="new_state" value="<?= (int)$staff['is_active'] === 1 ? 0 : 1 ?>">
                                     <button type="submit"><?= (int)$staff['is_active'] === 1 ? 'Deactivate' : 'Activate' ?></button>
                                 </form>
-                                <form method="post" class="inline-form" style="margin-top: 6px;" onsubmit="return confirm('Delete this <?= $staff['role'] === ROLE_ADMIN ? 'admin' : 'teacher' ?> permanently?');">
-                                    <input type="hidden" name="action" value="delete_staff">
-                                    <input type="hidden" name="staff_user_id" value="<?= (int)$staff['id'] ?>">
-                                    <input type="hidden" name="staff_role" value="<?= htmlspecialchars((string)$staff['role']) ?>">
-                                    <button type="submit" class="danger">Delete</button>
-                                </form>
+
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -375,5 +328,56 @@ require __DIR__ . '/../../includes/header.php';
             </table>
         </div>
     </section>
+
 </section>
+
+<div id="form-create-admin" class="collapsible-form">
+    <section class="card">
+        <h3>Create Admin</h3>
+        <form method="post" class="form-grid form-grid-wide">
+            <input type="hidden" name="action" value="create_admin">
+
+            <label>Full Name</label>
+            <input type="text" name="full_name" required>
+
+            <label>Email</label>
+            <input type="email" name="email" required>
+
+            <label>Temporary Password</label>
+            <input type="text" name="password" required>
+
+            <button type="submit">Create Admin Account</button>
+        </form>
+    </section>
+</div>
+
+<div id="form-create-teacher" class="collapsible-form">
+    <section class="card">
+        <h3>Add Teacher</h3>
+        <form method="post" class="form-grid form-grid-wide">
+            <input type="hidden" name="action" value="create_teacher">
+
+            <label>Full Name *</label>
+            <input type="text" name="full_name" required>
+
+            <label>Email *</label>
+            <input type="email" name="email" required>
+
+            <label>Temporary Password *</label>
+            <input type="text" name="password" required>
+
+            <label>Employee Code (optional)</label>
+            <input type="text" name="employee_code" placeholder="e.g., EMP001">
+
+            <label>Phone (optional)</label>
+            <input type="tel" name="phone" placeholder="e.g., 9876543210">
+
+            <label>Qualification (optional)</label>
+            <input type="text" name="qualification" placeholder="e.g., B.Sc, B.Ed">
+
+            <button type="submit">Create Teacher Account</button>
+        </form>
+    </section>
+</div>
+
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

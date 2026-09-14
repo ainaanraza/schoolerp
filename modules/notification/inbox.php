@@ -59,8 +59,7 @@ if ($role === ROLE_TEACHER) {
         $classStatement = $pdo->prepare(
             'SELECT DISTINCT c.id AS class_id
              FROM classes c
-             LEFT JOIN class_subjects cs ON cs.class_id = c.id
-             WHERE c.class_teacher_id = :teacher_id OR cs.teacher_id = :teacher_id'
+             WHERE c.class_teacher_id = :teacher_id'
         );
         $classStatement->execute(['teacher_id' => $teacherId]);
         $classIds = array_map(static fn(array $row): int => (int)$row['class_id'], $classStatement->fetchAll());
@@ -153,7 +152,7 @@ require __DIR__ . '/../../includes/header.php';
                     <tr>
                         <td><?= htmlspecialchars($row['title']) ?></td>
                         <td><?= nl2br(htmlspecialchars($row['message'])) ?></td>
-                        <td><?= htmlspecialchars($row['target_scope']) ?></td>
+                        <td><?= htmlspecialchars($row['target_scope'] === 'class' ? 'course' : (string)$row['target_scope']) ?></td>
                         <td><?= htmlspecialchars((string)$row['target_value']) ?></td>
                         <td><?= htmlspecialchars($row['sender_name']) ?></td>
                         <td><?= htmlspecialchars($row['created_at']) ?></td>

@@ -34,10 +34,38 @@ $todayAttendance = $pdo->query(
      WHERE attendance_date = CURDATE()'
 )->fetchColumn();
 
+$inventorySummary = [
+    'total_items' => 0,
+    'total_units' => 0,
+    'stock_value' => 0,
+];
+
+$inventoryTableExists = (bool)$pdo->query("SHOW TABLES LIKE 'inventory_items'")->fetchColumn();
+if ($inventoryTableExists) {
+    $inventoryRow = $pdo->query(
+        'SELECT COUNT(*) AS total_items,
+                COALESCE(SUM(quantity), 0) AS total_units,
+                COALESCE(SUM(quantity * unit_cost), 0) AS stock_value
+         FROM inventory_items'
+    )->fetch();
+
+    if ($inventoryRow) {
+        $inventorySummary = [
+            'total_items' => (int)($inventoryRow['total_items'] ?? 0),
+            'total_units' => (int)($inventoryRow['total_units'] ?? 0),
+            'stock_value' => (float)($inventoryRow['stock_value'] ?? 0),
+        ];
+    }
+}
+
 $pageTitle = 'Super Admin Dashboard';
 require __DIR__ . '/../includes/header.php';
 ?>
 <div class="dashboard-content">
+    <section class="card dashboard-hero">
+        <h3>Dashboard Overview</h3>
+        <p>Review key KPIs, admissions, attendance, and finance status.</p>
+    </section>
 
     <div class="metrics-grid">
         <a class="metric-card" href="/school-erp/modules/admission/admin_management.php#section-table">
@@ -71,6 +99,18 @@ require __DIR__ . '/../includes/header.php';
         <a class="metric-card" href="/school-erp/modules/attendance/manage.php#section-table">
             <p class="metric-label">Attendance Today</p>
             <p class="metric-value"><?= (int)$todayAttendance ?></p>
+        </a>
+        <a class="metric-card" href="/school-erp/modules/inventory/items.php#section-table">
+            <p class="metric-label">Inventory Items</p>
+            <p class="metric-value"><?= (int)$inventorySummary['total_items'] ?></p>
+        </a>
+        <a class="metric-card" href="/school-erp/modules/inventory/items.php#section-table">
+            <p class="metric-label">Inventory Units</p>
+            <p class="metric-value"><?= (int)$inventorySummary['total_units'] ?></p>
+        </a>
+        <a class="metric-card" href="/school-erp/modules/inventory/items.php#section-table">
+            <p class="metric-label">Inventory Value</p>
+            <p class="metric-value">₹<?= number_format((float)$inventorySummary['stock_value'], 2) ?></p>
         </a>
     </div>
 

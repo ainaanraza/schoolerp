@@ -80,13 +80,13 @@ header('Expires: 0');
 
 echo "<table border='1'>";
 echo '<tr>';
-echo '<th>Date</th><th>Class</th><th>Roll</th><th>Admission No</th><th>Student</th><th>Status</th><th>Remarks</th>';
+echo '<th>Date</th><th>Course</th><th>Roll</th><th>Admission No</th><th>Student</th><th>Status</th><th>Remarks</th>';
 echo '</tr>';
 
 foreach ($records as $record) {
     echo '<tr>';
     echo '<td>' . htmlspecialchars((string)$record['attendance_date']) . '</td>';
-    echo '<td>' . htmlspecialchars((string)$record['class_name'] . ' - ' . (string)$record['section']) . '</td>';
+    echo '<td>' . htmlspecialchars((string)$record['class_name']) . '</td>';
     echo '<td>' . htmlspecialchars((string)($record['roll_number'] ?: '-')) . '</td>';
     echo '<td>' . htmlspecialchars((string)$record['admission_no']) . '</td>';
     echo '<td>' . htmlspecialchars((string)$record['student_name']) . '</td>';

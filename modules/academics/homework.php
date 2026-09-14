@@ -59,6 +59,27 @@ function move_homework_file(array $file, int $studentId, array &$errors): ?strin
     return 'uploads/homework/' . $safeFileName;
 }
 
+function ensure_default_homework_subject(PDO $pdo): int
+{
+    $existingStatement = $pdo->prepare('SELECT id FROM subjects WHERE subject_name = :subject_name LIMIT 1');
+    $existingStatement->execute(['subject_name' => 'Course Work']);
+    $existingId = (int)($existingStatement->fetchColumn() ?: 0);
+    if ($existingId > 0) {
+        return $existingId;
+    }
+
+    $insertStatement = $pdo->prepare(
+        'INSERT INTO subjects (subject_name, subject_code)
+         VALUES (:subject_name, :subject_code)'
+    );
+    $insertStatement->execute([
+        'subject_name' => 'Course Work',
+        'subject_code' => 'COURSE',
+    ]);
+
+    return (int)$pdo->lastInsertId();
+}
+
 $errors = [];
 $success = [];
 $role = current_role();
@@ -66,7 +87,6 @@ $user = current_user();
 $studentId = 0;
 $teacherId = 0;
 $teacherClasses = [];
-$teacherSubjectsByClass = [];
 
 if ($role === ROLE_TEACHER) {
     $teacherIdStatement = $pdo->prepare('SELECT id FROM teachers WHERE user_id = :user_id LIMIT 1');
@@ -79,43 +99,11 @@ if ($role === ROLE_TEACHER) {
         $teacherClassesStatement = $pdo->prepare(
             'SELECT DISTINCT c.id, c.class_name, c.section
              FROM classes c
-             LEFT JOIN class_subjects cs ON cs.class_id = c.id
-             WHERE c.class_teacher_id = :teacher_id OR cs.teacher_id = :teacher_id
+             WHERE c.class_teacher_id = :teacher_id
              ORDER BY c.class_name, c.section'
         );
         $teacherClassesStatement->execute(['teacher_id' => $teacherId]);
         $teacherClasses = $teacherClassesStatement->fetchAll();
-
-        $teacherClassIds = array_map(static fn(array $row): int => (int)$row['id'], $teacherClasses);
-        if (!empty($teacherClassIds)) {
-            $classPlaceholders = [];
-            $params = ['teacher_id' => $teacherId];
-            foreach ($teacherClassIds as $index => $classId) {
-                $key = 'class_' . $index;
-                $classPlaceholders[] = ':' . $key;
-                $params[$key] = $classId;
-            }
-
-            $subjectMapStatement = $pdo->prepare(
-                'SELECT cs.class_id, sb.id AS subject_id, sb.subject_name
-                 FROM class_subjects cs
-                 JOIN subjects sb ON sb.id = cs.subject_id
-                 WHERE cs.class_id IN (' . implode(', ', $classPlaceholders) . ')
-                   AND (cs.teacher_id = :teacher_id OR cs.teacher_id IS NULL)
-                 ORDER BY sb.subject_name'
-            );
-            $subjectMapStatement->execute($params);
-            foreach ($subjectMapStatement->fetchAll() as $subjectRow) {
-                $classId = (int)$subjectRow['class_id'];
-                if (!isset($teacherSubjectsByClass[$classId])) {
-                    $teacherSubjectsByClass[$classId] = [];
-                }
-                $teacherSubjectsByClass[$classId][] = [
-                    'id' => (int)$subjectRow['subject_id'],
-                    'name' => (string)$subjectRow['subject_name'],
-                ];
-            }
-        }
     }
 }
 
@@ -158,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
         $targetHomework = $targetHomeworkStatement->fetch();
 
         if (!$targetHomework) {
-            $errors[] = 'Homework not found for your class or access denied.';
+            $errors[] = 'Homework not found for your course or access denied.';
         }
     }
 
@@ -221,7 +209,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_homework' && $role === ROLE_TEACHER) {
     $classId = (int)($_POST['class_id'] ?? 0);
-    $subjectId = (int)($_POST['subject_id'] ?? 0);
     $title = trim($_POST['title'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $dueDate = trim($_POST['due_date'] ?? '');
@@ -232,15 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
 
     $allowedClassIds = array_map(static fn(array $row): int => (int)$row['id'], $teacherClasses);
     if ($classId <= 0 || !in_array($classId, $allowedClassIds, true)) {
-        $errors[] = 'Invalid class selected.';
-    }
-
-    $allowedSubjectIds = array_map(
-        static fn(array $subject): int => (int)$subject['id'],
-        $teacherSubjectsByClass[$classId] ?? []
-    );
-    if ($subjectId <= 0 || !in_array($subjectId, $allowedSubjectIds, true)) {
-        $errors[] = 'Invalid subject selected for this class.';
+        $errors[] = 'Invalid course selected.';
     }
 
     if ($title === '') {
@@ -253,6 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
 
     if (empty($errors)) {
         try {
+            $subjectId = ensure_default_homework_subject($pdo);
             $createHomeworkStatement = $pdo->prepare(
                 'INSERT INTO homework (class_id, subject_id, title, description, due_date, posted_by)
                  VALUES (:class_id, :subject_id, :title, :description, :due_date, :posted_by)'
@@ -330,11 +310,9 @@ if ($role === ROLE_STUDENT && $studentId > 0) {
     $homeworkStatement = $pdo->prepare(
         'SELECT h.id, h.title, h.description, h.due_date, h.created_at,
                 c.class_name, c.section,
-                sb.subject_name,
                 hs.submitted_at, hs.file_path AS submission_file, hs.remarks AS submission_remarks, hs.status AS submission_status
          FROM homework h
          JOIN classes c ON c.id = h.class_id
-         JOIN subjects sb ON sb.id = h.subject_id
          JOIN student_class_enrollments sce
              ON sce.class_id = h.class_id
             AND sce.student_id = :student_id
@@ -352,7 +330,6 @@ if ($role === ROLE_PARENT) {
     $homeworkStatement = $pdo->prepare(
         'SELECT h.id, h.title, h.description, h.due_date, h.created_at,
                 c.class_name, c.section,
-                sb.subject_name,
                 su.full_name AS student_name,
                 hs.submitted_at, hs.status AS submission_status
          FROM parents p
@@ -364,7 +341,6 @@ if ($role === ROLE_PARENT) {
             AND sce.is_active = 1
          JOIN homework h ON h.class_id = sce.class_id
          JOIN classes c ON c.id = h.class_id
-         JOIN subjects sb ON sb.id = h.subject_id
          LEFT JOIN homework_submissions hs
              ON hs.homework_id = h.id
             AND hs.student_id = st.id
@@ -387,7 +363,6 @@ if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_TEACHER], true)) {
     $homeworkStatement = $pdo->prepare(
         'SELECT h.id, h.title, h.description, h.due_date, h.created_at,
                 c.class_name, c.section,
-                sb.subject_name,
                 u.full_name AS posted_by_name,
                 COUNT(hs.id) AS submission_count,
                 SUM(CASE WHEN hs.status = "submitted" THEN 1 ELSE 0 END) AS submitted_count,
@@ -395,11 +370,10 @@ if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_TEACHER], true)) {
                 SUM(CASE WHEN hs.status = "pending" THEN 1 ELSE 0 END) AS pending_count
          FROM homework h
          JOIN classes c ON c.id = h.class_id
-         JOIN subjects sb ON sb.id = h.subject_id
          LEFT JOIN users u ON u.id = h.posted_by
          LEFT JOIN homework_submissions hs ON hs.homework_id = h.id
          ' . $whereClause . '
-         GROUP BY h.id, h.title, h.description, h.due_date, h.created_at, c.class_name, c.section, sb.subject_name, u.full_name
+            GROUP BY h.id, h.title, h.description, h.due_date, h.created_at, c.class_name, c.section, u.full_name
          ORDER BY h.created_at DESC
          LIMIT 200'
     );
@@ -411,40 +385,14 @@ $pageTitle = 'Homework & Assignments';
 require __DIR__ . '/../../includes/header.php';
 ?>
 <section class="card">
-    <h2>Homework & Assignments</h2>
-
-    <?php if ($role === ROLE_TEACHER): ?>
-        <section class="card">
-            <h3>Create Homework</h3>
-            <form method="post" class="form-grid form-grid-wide">
-                <input type="hidden" name="action" value="create_homework">
-
-                <label>Class</label>
-                <select name="class_id" id="teacherHomeworkClass" required>
-                    <option value="">Select class</option>
-                    <?php foreach ($teacherClasses as $class): ?>
-                        <option value="<?= (int)$class['id'] ?>"><?= htmlspecialchars((string)$class['class_name'] . ' - ' . (string)$class['section']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-
-                <label>Subject</label>
-                <select name="subject_id" id="teacherHomeworkSubject" required>
-                    <option value="">Select subject</option>
-                </select>
-
-                <label>Title</label>
-                <input type="text" name="title" maxlength="150" required>
-
-                <label>Description (optional)</label>
-                <textarea name="description" rows="4"></textarea>
-
-                <label>Due Date (optional)</label>
-                <input type="date" name="due_date">
-
-                <button type="submit">Post Homework</button>
-            </form>
-        </section>
-    <?php endif; ?>
+    <div class="form-header-actions">
+        <h2>Homework & Assignments</h2>
+        <?php if ($role === ROLE_TEACHER): ?>
+            <div>
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-create-homework', this)">+ Add Homework</button>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -469,8 +417,7 @@ require __DIR__ . '/../../includes/header.php';
                     <?php if ($role === ROLE_PARENT): ?>
                         <th>Student</th>
                     <?php endif; ?>
-                    <th>Class</th>
-                    <th>Subject</th>
+                    <th>Course</th>
                     <th>Title</th>
                     <th>Description</th>
                     <th>Due Date</th>
@@ -478,7 +425,6 @@ require __DIR__ . '/../../includes/header.php';
                         <th>Posted By</th>
                         <th>Submissions</th>
                         <?php if ($role === ROLE_TEACHER): ?>
-                            <th>Action</th>
                         <?php endif; ?>
                     <?php else: ?>
                         <th>Status</th>
@@ -498,8 +444,7 @@ require __DIR__ . '/../../includes/header.php';
                         <?php if ($role === ROLE_PARENT): ?>
                             <td><?= htmlspecialchars((string)($row['student_name'] ?? '-')) ?></td>
                         <?php endif; ?>
-                        <td><?= htmlspecialchars((string)$row['class_name'] . ' - ' . (string)$row['section']) ?></td>
-                        <td><?= htmlspecialchars((string)$row['subject_name']) ?></td>
+                        <td><?= htmlspecialchars((string)$row['class_name']) ?></td>
                         <td><?= htmlspecialchars((string)$row['title']) ?></td>
                         <td><?= nl2br(htmlspecialchars((string)($row['description'] ?? ''))) ?></td>
                         <td>
@@ -518,13 +463,6 @@ require __DIR__ . '/../../includes/header.php';
                                 <span class="pill">pending: <?= (int)($row['pending_count'] ?? 0) ?></span>
                             </td>
                             <?php if ($role === ROLE_TEACHER): ?>
-                                <td>
-                                    <form method="post" class="inline-form" onsubmit="return confirm('Delete this homework and linked submissions?');">
-                                        <input type="hidden" name="action" value="delete_homework">
-                                        <input type="hidden" name="homework_id" value="<?= (int)$row['id'] ?>">
-                                        <button type="submit">Delete</button>
-                                    </form>
-                                </td>
                             <?php endif; ?>
                         <?php else: ?>
                             <td><span class="pill"><?= htmlspecialchars($submissionStatus) ?></span></td>
@@ -554,7 +492,7 @@ require __DIR__ . '/../../includes/header.php';
 
                 <?php if (empty($homeworkRows)): ?>
                     <tr>
-                        <td colspan="10">No homework records found.</td>
+                        <td colspan="8">No homework records found.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -563,35 +501,33 @@ require __DIR__ . '/../../includes/header.php';
 </section>
 
 <?php if ($role === ROLE_TEACHER): ?>
-    <script>
-        (function () {
-            const classSelect = document.getElementById('teacherHomeworkClass');
-            const subjectSelect = document.getElementById('teacherHomeworkSubject');
-            const subjectMap = <?= json_encode($teacherSubjectsByClass, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    <div id="form-create-homework" class="collapsible-form">
+        <section class="card">
+            <h3>Create Homework</h3>
+            <form method="post" class="form-grid form-grid-wide">
+                <input type="hidden" name="action" value="create_homework">
 
-            function refreshSubjects() {
-                const classId = classSelect.value;
-                const subjects = subjectMap[classId] || [];
-                subjectSelect.innerHTML = '';
+                <label>Course</label>
+                <select name="class_id" id="teacherHomeworkClass" required>
+                    <option value="">Select course</option>
+                    <?php foreach ($teacherClasses as $class): ?>
+                        <option value="<?= (int)$class['id'] ?>"><?= htmlspecialchars((string)$class['class_name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
 
-                const placeholder = document.createElement('option');
-                placeholder.value = '';
-                placeholder.textContent = subjects.length > 0 ? 'Select subject' : 'No subject mapped';
-                subjectSelect.appendChild(placeholder);
+                <label>Title</label>
+                <input type="text" name="title" maxlength="150" required>
 
-                subjects.forEach(function (subject) {
-                    const option = document.createElement('option');
-                    option.value = String(subject.id);
-                    option.textContent = subject.name;
-                    subjectSelect.appendChild(option);
-                });
-            }
+                <label>Description (optional)</label>
+                <textarea name="description" rows="4"></textarea>
 
-            if (classSelect && subjectSelect) {
-                classSelect.addEventListener('change', refreshSubjects);
-                refreshSubjects();
-            }
-        })();
-    </script>
+                <label>Due Date (optional)</label>
+                <input type="date" name="due_date">
+
+                <button type="submit">Post Homework</button>
+            </form>
+        </section>
+    </div>
 <?php endif; ?>
+
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

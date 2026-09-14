@@ -17,8 +17,7 @@ if ($teacher) {
         'SELECT DISTINCT c.id, c.class_name, c.section, c.session_id, s.title AS session_title
          FROM classes c
          JOIN academic_sessions s ON s.id = c.session_id
-         LEFT JOIN class_subjects cs ON cs.class_id = c.id
-         WHERE c.class_teacher_id = :teacher_id OR cs.teacher_id = :teacher_id
+         WHERE c.class_teacher_id = :teacher_id
          ORDER BY c.class_name, c.section'
     );
     $classStatement->execute(['teacher_id' => $teacher['id']]);
@@ -34,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
     $remarksRows = $_POST['remarks'] ?? [];
 
     if ($selectedClassId <= 0 || !in_array($selectedClassId, $allowedClassIds, true)) {
-        $errors[] = 'Invalid class selected.';
+        $errors[] = 'Invalid course selected.';
     }
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)) {
@@ -159,12 +158,12 @@ require __DIR__ . '/../../includes/header.php';
         <?php endif; ?>
 
         <form method="get" class="form-grid form-grid-wide">
-            <label>Class</label>
+            <label>Course</label>
             <select name="class_id" required>
-                <option value="">Select class</option>
+                <option value="">Select course</option>
                 <?php foreach ($classes as $class): ?>
                     <option value="<?= (int)$class['id'] ?>" <?= $selectedClassId === (int)$class['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($class['class_name'] . ' - ' . $class['section'] . ' (' . $class['session_title'] . ')') ?>
+                        <?= htmlspecialchars($class['class_name'] . ' (' . $class['session_title'] . ')') ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -176,7 +175,7 @@ require __DIR__ . '/../../includes/header.php';
         </form>
 
         <?php if ($selectedClassId > 0): ?>
-            <form method="post" class="card" style="margin-top: 16px;">
+            <form method="post" class="card card-offset-top">
                 <input type="hidden" name="action" value="save_attendance">
                 <input type="hidden" name="class_id" value="<?= (int)$selectedClassId ?>">
                 <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($selectedDate) ?>">
@@ -218,7 +217,7 @@ require __DIR__ . '/../../includes/header.php';
                             <?php endforeach; ?>
                             <?php if (empty($students)): ?>
                                 <tr>
-                                    <td colspan="5">No enrolled students found for selected class.</td>
+                                    <td colspan="5">No enrolled students found for selected course.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -226,7 +225,7 @@ require __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <?php if (!empty($students)): ?>
-                    <button type="submit" style="margin-top: 12px;">Save Attendance</button>
+                    <button type="submit" class="form-submit-spacer">Save Attendance</button>
                 <?php endif; ?>
             </form>
         <?php endif; ?>

@@ -141,7 +141,14 @@ $pageTitle = 'Document Management';
 require __DIR__ . '/../../includes/header.php';
 ?>
 <section class="card">
-    <h2>Document Management</h2>
+    <div class="form-header-actions">
+        <h2>Document Management</h2>
+        <?php if ($role === ROLE_STUDENT && $studentId > 0): ?>
+            <div>
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-upload-document', this)">+ Upload Document</button>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -157,23 +164,6 @@ require __DIR__ . '/../../includes/header.php';
                 <p><?= htmlspecialchars($message) ?></p>
             <?php endforeach; ?>
         </div>
-    <?php endif; ?>
-
-    <?php if ($role === ROLE_STUDENT && $studentId > 0): ?>
-        <section class="card">
-            <h3>Upload New Document</h3>
-            <form method="post" enctype="multipart/form-data" class="form-grid form-grid-wide">
-                <input type="hidden" name="action" value="upload_document">
-
-                <label>Document Type</label>
-                <input type="text" name="document_type" placeholder="Aadhaar Card / Birth Certificate / Transfer Certificate" maxlength="80" required>
-
-                <label>File (PDF/JPG/PNG, max 5MB)</label>
-                <input type="file" name="document_file" accept=".pdf,.jpg,.jpeg,.png" required>
-
-                <button type="submit">Upload Document</button>
-            </form>
-        </section>
     <?php endif; ?>
 
     <div class="table-wrap">
@@ -231,5 +221,26 @@ require __DIR__ . '/../../includes/header.php';
             </tbody>
         </table>
     </div>
+
 </section>
+
+<?php if ($role === ROLE_STUDENT && $studentId > 0): ?>
+    <div id="form-upload-document" class="collapsible-form">
+        <section class="card">
+            <h3>Upload New Document</h3>
+            <form method="post" enctype="multipart/form-data" class="form-grid form-grid-wide">
+                <input type="hidden" name="action" value="upload_document">
+
+                <label>Document Type</label>
+                <input type="text" name="document_type" placeholder="Aadhaar Card / Birth Certificate / Transfer Certificate" maxlength="80" required>
+
+                <label>File (PDF/JPG/PNG, max 5MB)</label>
+                <input type="file" name="document_file" accept=".pdf,.jpg,.jpeg,.png" required>
+
+                <button type="submit">Upload Document</button>
+            </form>
+        </section>
+    </div>
+<?php endif; ?>
+
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

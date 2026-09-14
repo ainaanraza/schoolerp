@@ -6,17 +6,16 @@ $teacherIdStatement = $pdo->prepare('SELECT id FROM teachers WHERE user_id = :us
 $teacherIdStatement->execute(['user_id' => current_user()['id']]);
 $teacherId = (int)($teacherIdStatement->fetchColumn() ?: 0);
 
-$assignedClasses = 0;
+$assignedCourses = 0;
 $assignedStudents = 0;
 if ($teacherId > 0) {
     $classCountStmt = $pdo->prepare(
         'SELECT COUNT(DISTINCT c.id)
          FROM classes c
-         LEFT JOIN class_subjects cs ON cs.class_id = c.id
-         WHERE c.class_teacher_id = :teacher_id OR cs.teacher_id = :teacher_id'
+         WHERE c.class_teacher_id = :teacher_id'
     );
     $classCountStmt->execute(['teacher_id' => $teacherId]);
-    $assignedClasses = (int)$classCountStmt->fetchColumn();
+    $assignedCourses = (int)$classCountStmt->fetchColumn();
 
     $studentCountStmt = $pdo->prepare(
         'SELECT COUNT(DISTINCT sce.student_id)
@@ -24,8 +23,7 @@ if ($teacherId > 0) {
          WHERE sce.class_id IN (
              SELECT DISTINCT c.id
              FROM classes c
-             LEFT JOIN class_subjects cs ON cs.class_id = c.id
-             WHERE c.class_teacher_id = :teacher_id OR cs.teacher_id = :teacher_id
+             WHERE c.class_teacher_id = :teacher_id
          )
          AND sce.is_active = 1'
     );
@@ -62,10 +60,15 @@ $pageTitle = 'Teacher Dashboard';
 require __DIR__ . '/../includes/header.php';
 ?>
 <div class="dashboard-content">
+    <section class="card dashboard-hero">
+        <h3>Teaching Performance Hub</h3>
+        <p>Stay on top of your assigned courses, attendance progress, homework cadence, and communication activity.</p>
+    </section>
+
     <div class="metrics-grid">
         <a class="metric-card" href="/school-erp/modules/admission/students.php#section-table">
-            <p class="metric-label">Assigned Classes</p>
-            <p class="metric-value"><?= $assignedClasses ?></p>
+            <p class="metric-label">Assigned Courses</p>
+            <p class="metric-value"><?= $assignedCourses ?></p>
         </a>
         <a class="metric-card" href="/school-erp/modules/admission/students.php#section-table">
             <p class="metric-label">Assigned Students</p>

@@ -50,14 +50,12 @@ if (!empty($childIds) && empty($errors)) {
     $sql =
         'SELECT h.id, h.title, h.description, h.due_date, h.created_at,
                 c.class_name, c.section,
-                sb.subject_name,
                 st.id AS student_id,
                 su.full_name AS student_name,
                 hs.status AS submission_status,
                 hs.submitted_at
          FROM homework h
          JOIN classes c ON c.id = h.class_id
-         JOIN subjects sb ON sb.id = h.subject_id
          JOIN student_class_enrollments sce ON sce.class_id = h.class_id AND sce.is_active = 1
          JOIN students st ON st.id = sce.student_id
          LEFT JOIN users su ON su.id = st.user_id
@@ -146,8 +144,7 @@ require __DIR__ . '/../includes/header.php';
             <thead>
                 <tr>
                     <th>Student</th>
-                    <th>Class</th>
-                    <th>Subject</th>
+                    <th>Course</th>
                     <th>Title</th>
                     <th>Due Date</th>
                     <th>Status</th>
@@ -163,8 +160,7 @@ require __DIR__ . '/../includes/header.php';
                     ?>
                     <tr>
                         <td><?= htmlspecialchars((string)$row['student_name']) ?></td>
-                        <td><?= htmlspecialchars((string)$row['class_name'] . ' - ' . (string)$row['section']) ?></td>
-                        <td><?= htmlspecialchars((string)$row['subject_name']) ?></td>
+                        <td><?= htmlspecialchars((string)$row['class_name']) ?></td>
                         <td><?= htmlspecialchars((string)$row['title']) ?></td>
                         <td>
                             <?= htmlspecialchars((string)($row['due_date'] ?: '-')) ?>
@@ -177,7 +173,7 @@ require __DIR__ . '/../includes/header.php';
                     </tr>
                 <?php endforeach; ?>
                 <?php if (empty($rows)): ?>
-                    <tr><td colspan="7">No homework records found.</td></tr>
+                    <tr><td colspan="6">No homework records found.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

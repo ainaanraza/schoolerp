@@ -23,8 +23,7 @@ if ($role === ROLE_TEACHER) {
         $teacherClassStatement = $pdo->prepare(
             'SELECT DISTINCT c.id
              FROM classes c
-             LEFT JOIN class_subjects cs ON cs.class_id = c.id
-             WHERE c.class_teacher_id = :teacher_id OR cs.teacher_id = :teacher_id'
+             WHERE c.class_teacher_id = :teacher_id'
         );
         $teacherClassStatement->execute(['teacher_id' => $teacherId]);
         $teacherClassIds = array_map(static fn(array $row): int => (int)$row['id'], $teacherClassStatement->fetchAll());
@@ -101,14 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($targetScope === 'class') {
         $classId = (int)$targetValue;
         if ($classId <= 0) {
-            $errors[] = 'Class target is required.';
+            $errors[] = 'Course target is required.';
         } else {
             $classIds = array_map(static fn(array $row): int => (int)$row['id'], $allClasses);
             if (!in_array($classId, $classIds, true)) {
-                $errors[] = 'Selected class does not exist.';
+                $errors[] = 'Selected course does not exist.';
             }
             if ($role === ROLE_TEACHER && !in_array($classId, $teacherClassIds, true)) {
-                $errors[] = 'Teachers can only notify their assigned classes.';
+                $errors[] = 'Teachers can only notify their assigned courses.';
             }
         }
     }
@@ -173,109 +172,87 @@ if ($role !== ROLE_TEACHER) {
 $pageTitle = 'Send Notifications';
 require __DIR__ . '/../../includes/header.php';
 ?>
-<section class="card">
-    <h2>Notification Sender</h2>
-
-    <?php if (!empty($errors)): ?>
-        <div class="error">
-            <?php foreach ($errors as $error): ?>
-                <p><?= htmlspecialchars($error) ?></p>
-            <?php endforeach; ?>
+    <!-- CLEAN TABLES VIEW FIRST -->
+    <section class="card">
+        <div class="form-header-actions">
+            <h3>Recent Notifications</h3>
+            <button type="button" class="btn-toggle-form" onclick="toggleForm('form-broadcast', this)">+ New Broadcast</button>
         </div>
-    <?php endif; ?>
+        <div class="table-wrap" id="section-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Scope</th>
+                        <th>Target</th>
+                        <th>Sender</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($recentNotifications as $row): ?>
+                        <tr>
+                            <td><?= (int)$row['id'] ?></td>
+                            <td><?= htmlspecialchars($row['title']) ?></td>
+                            <td><?= htmlspecialchars($row['target_scope'] === 'class' ? 'course' : (string)$row['target_scope']) ?></td>
+                            <td><?= htmlspecialchars((string)$row['target_value']) ?></td>
+                            <td><?= htmlspecialchars($row['sender_name']) ?></td>
+                            <td><?= htmlspecialchars($row['created_at']) ?></td>
 
-    <?php if (!empty($success)): ?>
-        <div class="success">
-            <?php foreach ($success as $message): ?>
-                <p><?= htmlspecialchars($message) ?></p>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-
-    <form method="post" class="form-grid form-grid-wide">
-        <label>Title</label>
-        <input type="text" name="title" required>
-
-        <label>Message</label>
-        <textarea name="message" rows="4" required></textarea>
-
-        <label>Target Scope</label>
-        <select name="target_scope" id="targetScopeSelect" required>
-            <?php foreach ($allowedScopesByRole[$role] as $scope): ?>
-                <option value="<?= htmlspecialchars($scope) ?>"><?= htmlspecialchars(strtoupper($scope)) ?></option>
-            <?php endforeach; ?>
-        </select>
-
-        <label>Target Value</label>
-        <select name="target_value" id="targetValueSelect">
-            <option value="">Select target</option>
-            <?php if ($role === ROLE_TEACHER): ?>
-                <?php foreach ($allClasses as $class): ?>
-                    <?php if (in_array((int)$class['id'], $teacherClassIds, true)): ?>
-                        <option value="<?= (int)$class['id'] ?>">Class: <?= htmlspecialchars($class['class_name'] . ' - ' . $class['section']) ?></option>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($recentNotifications)): ?>
+                        <tr>
+                            <td colspan="6">No notifications created yet.</td>
+                        </tr>
                     <?php endif; ?>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <?php foreach ($allowedRoleTargets as $roleTarget): ?>
-                    <option value="<?= htmlspecialchars($roleTarget) ?>">Role: <?= htmlspecialchars($roleTarget) ?></option>
-                <?php endforeach; ?>
-                <?php foreach ($allClasses as $class): ?>
-                    <option value="<?= (int)$class['id'] ?>">Class: <?= htmlspecialchars($class['class_name'] . ' - ' . $class['section']) ?></option>
-                <?php endforeach; ?>
-                <?php foreach ($userTargets as $targetUser): ?>
-                    <option value="<?= (int)$targetUser['id'] ?>">User: <?= htmlspecialchars($targetUser['full_name'] . ' [' . $targetUser['role'] . ']') ?></option>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </select>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-        <button type="submit">Send Notification</button>
-    </form>
-</section>
+    <div id="form-broadcast" class="collapsible-form">
+        <section class="card">
+            <h3>Notification Sender</h3>
+            <form method="post" class="form-grid form-grid-wide">
+                <label>Title</label>
+                <input type="text" name="title" required>
 
-<section class="card">
-    <h3>Recent Notifications</h3>
-    <div class="table-wrap" id="section-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Title</th>
-                    <th>Scope</th>
-                    <th>Target</th>
-                    <th>Sender</th>
-                    <th>Time</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($recentNotifications as $row): ?>
-                    <tr>
-                        <td><?= (int)$row['id'] ?></td>
-                        <td><?= htmlspecialchars($row['title']) ?></td>
-                        <td><?= htmlspecialchars($row['target_scope']) ?></td>
-                        <td><?= htmlspecialchars((string)$row['target_value']) ?></td>
-                        <td><?= htmlspecialchars($row['sender_name']) ?></td>
-                        <td><?= htmlspecialchars($row['created_at']) ?></td>
-                        <td>
-                            <?php if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN], true) || (int)$row['sender_id'] === (int)current_user()['id']): ?>
-                                <form method="post" class="inline-form" onsubmit="return confirm('Delete this notification?');">
-                                    <input type="hidden" name="action" value="delete_notification">
-                                    <input type="hidden" name="notification_id" value="<?= (int)$row['id'] ?>">
-                                    <button type="submit" class="danger">Delete</button>
-                                </form>
-                            <?php else: ?>
-                                <span>-</span>
+                <label>Message</label>
+                <textarea name="message" rows="4" required></textarea>
+
+                <label>Target Scope</label>
+                <select name="target_scope" id="targetScopeSelect" required>
+                    <?php foreach ($allowedScopesByRole[$role] as $scope): ?>
+                        <option value="<?= htmlspecialchars($scope) ?>"><?= htmlspecialchars($scope === 'class' ? 'COURSE' : strtoupper($scope)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <label>Target Value</label>
+                <select name="target_value" id="targetValueSelect">
+                    <option value="">Select target</option>
+                    <?php if ($role === ROLE_TEACHER): ?>
+                        <?php foreach ($allClasses as $class): ?>
+                            <?php if (in_array((int)$class['id'], $teacherClassIds, true)): ?>
+                                <option value="<?= (int)$class['id'] ?>">Course: <?= htmlspecialchars($class['class_name']) ?></option>
                             <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                <?php if (empty($recentNotifications)): ?>
-                    <tr>
-                        <td colspan="7">No notifications created yet.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php foreach ($allowedRoleTargets as $roleTarget): ?>
+                            <option value="<?= htmlspecialchars($roleTarget) ?>">Role: <?= htmlspecialchars($roleTarget) ?></option>
+                        <?php endforeach; ?>
+                        <?php foreach ($allClasses as $class): ?>
+                            <option value="<?= (int)$class['id'] ?>">Course: <?= htmlspecialchars($class['class_name']) ?></option>
+                        <?php endforeach; ?>
+                        <?php foreach ($userTargets as $targetUser): ?>
+                            <option value="<?= (int)$targetUser['id'] ?>">User: <?= htmlspecialchars($targetUser['full_name'] . ' [' . $targetUser['role'] . ']') ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+
+                <button type="submit">Send Notification</button>
+            </form>
+        </section>
     </div>
-</section>
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

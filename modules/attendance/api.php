@@ -75,6 +75,12 @@ $query = $pdo->prepare($sql);
 $query->execute($params);
 $rows = $query->fetchAll();
 
+foreach ($rows as &$row) {
+    $row['course_id'] = (int)$row['class_id'];
+    $row['course_name'] = (string)$row['class_name'];
+}
+unset($row);
+
 $summary = [
     'total' => 0,
     'present' => 0,
@@ -95,6 +101,7 @@ echo json_encode([
         'from_date' => $fromDate,
         'to_date' => $toDate,
         'class_id' => $classId,
+        'course_id' => $classId,
         'role' => $role,
     ],
     'summary' => $summary,

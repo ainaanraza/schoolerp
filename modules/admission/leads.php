@@ -67,6 +67,12 @@ function ensure_lead_profile_columns(PDO $pdo): void
     if (!isset($columns['admission_fee_amount'])) {
         $pdo->exec('ALTER TABLE leads ADD COLUMN admission_fee_amount DECIMAL(10,2) NULL AFTER admission_fee_status');
     }
+    if (!isset($columns['admission_concession_amount'])) {
+        $pdo->exec('ALTER TABLE leads ADD COLUMN admission_concession_amount DECIMAL(10,2) NULL AFTER admission_fee_amount');
+    }
+    if (!isset($columns['admission_concession_note'])) {
+        $pdo->exec('ALTER TABLE leads ADD COLUMN admission_concession_note TEXT NULL AFTER admission_concession_amount');
+    }
     if (!isset($columns['payment_mode'])) {
         $pdo->exec('ALTER TABLE leads ADD COLUMN payment_mode ENUM("cash", "card", "upi", "bank_transfer", "online_gateway") NULL AFTER admission_fee_amount');
     }
@@ -163,6 +169,113 @@ function period_label_for_cycle(string $billingCycle): string
         'yearly' => $year,
         default => 'Admission-' . $year,
     };
+}
+
+function fee_status_for_amount(float $payableAmount, float $paidAmount): string
+{
+    if ($payableAmount <= 0 || $paidAmount >= $payableAmount) {
+        return 'paid';
+    }
+
+    if ($paidAmount > 0 && $paidAmount < $payableAmount) {
+        return 'partial';
+    }
+
+    return 'pending';
+}
+
+function apply_admission_concession_to_student_fees(PDO $pdo, int $studentId, int $classId, int $sessionId, float $concessionAmount): void
+{
+    if ($concessionAmount <= 0) {
+        return;
+    }
+
+    $feeRowsStatement = $pdo->prepare(
+        'SELECT sf.id, sf.total_amount, sf.discount_amount, sf.payable_amount, sf.paid_amount, fs.fee_type, fs.billing_cycle
+         FROM student_fees sf
+         JOIN fee_structures fs ON fs.id = sf.fee_structure_id
+         WHERE sf.student_id = :student_id
+           AND fs.class_id = :class_id
+           AND fs.session_id = :session_id
+           AND fs.is_active = 1
+         ORDER BY CASE fs.fee_type WHEN "admission_fee" THEN 0 WHEN "tuition_fee" THEN 1 WHEN "caution_money" THEN 2 ELSE 3 END,
+                  CASE WHEN fs.billing_cycle = "one_time" THEN 0 ELSE 1 END,
+                  sf.id
+         FOR UPDATE'
+    );
+    $feeRowsStatement->execute([
+        'student_id' => $studentId,
+        'class_id' => $classId,
+        'session_id' => $sessionId,
+    ]);
+    $feeRows = $feeRowsStatement->fetchAll();
+
+    if (empty($feeRows)) {
+        return;
+    }
+
+    $updateStatement = $pdo->prepare(
+        'UPDATE student_fees
+         SET discount_amount = :discount_amount,
+             payable_amount = :payable_amount,
+             status = :status
+         WHERE id = :id'
+    );
+
+    $remainingConcession = $concessionAmount;
+    foreach ($feeRows as $feeRow) {
+        if ($remainingConcession <= 0) {
+            break;
+        }
+
+        $totalAmount = (float)$feeRow['total_amount'];
+        $currentDiscount = (float)$feeRow['discount_amount'];
+        $currentPaid = (float)$feeRow['paid_amount'];
+        $discountableAmount = max(0, $totalAmount - $currentDiscount - $currentPaid);
+
+        if ($discountableAmount <= 0) {
+            continue;
+        }
+
+        $applied = min($remainingConcession, $discountableAmount);
+        $newDiscount = $currentDiscount + $applied;
+        $newPayable = max($currentPaid, $totalAmount - $newDiscount);
+
+        $updateStatement->execute([
+            'discount_amount' => $newDiscount,
+            'payable_amount' => $newPayable,
+            'status' => fee_status_for_amount($newPayable, $currentPaid),
+            'id' => (int)$feeRow['id'],
+        ]);
+
+        $remainingConcession -= $applied;
+    }
+}
+
+function notify_superadmin_of_concession(PDO $pdo, array $lead, string $classLabel, float $concessionAmount, string $concessionNote): void
+{
+    if ($concessionAmount <= 0) {
+        return;
+    }
+
+    $title = 'Admission concession recorded';
+    $message = 'Admission concession of ₹' . number_format($concessionAmount, 2) . ' was set for lead #' . (int)$lead['id'] . ' - ' . (string)$lead['lead_name'] . ' (' . $classLabel . ').';
+    if ($concessionNote !== '') {
+        $message .= ' Reason: ' . $concessionNote . '.';
+    }
+    $message .= ' Review any additional discount from superadmin finance.';
+
+    $insertNotification = $pdo->prepare(
+        'INSERT INTO notifications (title, message, sender_id, target_scope, target_value)
+         VALUES (:title, :message, :sender_id, :target_scope, :target_value)'
+    );
+    $insertNotification->execute([
+        'title' => $title,
+        'message' => $message,
+        'sender_id' => current_user()['id'],
+        'target_scope' => 'role',
+        'target_value' => ROLE_SUPER_ADMIN,
+    ]);
 }
 
 function ensure_student_fees_for_class(PDO $pdo, int $studentId, int $classId, int $sessionId): array
@@ -324,10 +437,6 @@ $classOptions = $pdo->query(
      ORDER BY s.is_active DESC, s.start_date DESC, c.class_name, c.section'
 )->fetchAll();
 
-// Search params
-$searchName = trim($_GET['search_name'] ?? '');
-$searchStatus = $_GET['search_status'] ?? '';
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ensure_lead_profile_columns($pdo);
 
@@ -372,14 +481,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $leadId = (int)($_POST['lead_id'] ?? 0);
         $classId = (int)($_POST['class_id'] ?? 0);
         $feeAmount = (float)($_POST['admission_fee_amount'] ?? 0);
+        $concessionAmount = (float)($_POST['admission_concession_amount'] ?? 0);
+        $concessionNote = trim($_POST['admission_concession_note'] ?? '');
         $paymentMode = $_POST['payment_mode'] ?? '';
         $allowedPaymentModes = ['cash', 'card', 'upi', 'bank_transfer', 'online_gateway'];
 
         if ($leadId <= 0 || $classId <= 0 || !in_array($paymentMode, $allowedPaymentModes, true)) {
-            $errors[] = 'Invalid fee update request. Select class, payment mode, and enter an amount.';
+            $errors[] = 'Invalid fee update request. Select course, payment mode, and enter an amount.';
         } else {
             if ($feeAmount <= 0) {
                 $errors[] = 'Enter a valid admission fee amount.';
+            }
+            if ($concessionAmount < 0) {
+                $errors[] = 'Concession amount cannot be negative.';
+            }
+            if ($concessionAmount > 0 && $concessionNote === '') {
+                $errors[] = 'Add a note explaining the concession.';
             }
 
             $classStatement = $pdo->prepare('SELECT class_name, section FROM classes WHERE id = :id LIMIT 1');
@@ -387,32 +504,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $selectedClass = $classStatement->fetch();
 
             if (!$selectedClass) {
-                $errors[] = 'Selected class is invalid.';
+                $errors[] = 'Selected course is invalid.';
             }
         }
 
         if (empty($errors)) {
-            $classApplied = (string)$selectedClass['class_name'] . ' - ' . (string)$selectedClass['section'];
-            $updateFee = $pdo->prepare(
-                'UPDATE leads
-                 SET admission_fee_status = NULL,
-                     admission_fee_amount = :admission_fee_amount,
-                     payment_mode = :payment_mode,
-                     class_id = :class_id,
-                     class_applied = :class_applied,
-                     admission_fee_paid = 1,
-                     payment_confirmed_at = :payment_confirmed_at
-                 WHERE id = :id'
-            );
-            $updateFee->execute([
-                'admission_fee_amount' => $feeAmount,
-                'payment_mode' => $paymentMode,
-                'class_id' => $classId,
-                'class_applied' => $classApplied,
-                'payment_confirmed_at' => date('Y-m-d H:i:s'),
-                'id' => $leadId,
-            ]);
-            $success[] = 'Admission fee details updated.';
+            try {
+                $pdo->beginTransaction();
+
+                $leadLookup = $pdo->prepare(
+                    'SELECT id, lead_name, class_applied, admission_concession_amount, admission_concession_note
+                     FROM leads
+                     WHERE id = :id
+                     LIMIT 1 FOR UPDATE'
+                );
+                $leadLookup->execute(['id' => $leadId]);
+                $leadRow = $leadLookup->fetch();
+
+                if (!$leadRow) {
+                    throw new RuntimeException('Lead not found.');
+                }
+
+                $classApplied = (string)$selectedClass['class_name'];
+                $normalizedConcessionAmount = $concessionAmount > 0 ? $concessionAmount : 0.0;
+                $normalizedConcessionNote = $normalizedConcessionAmount > 0 ? $concessionNote : null;
+
+                $updateFee = $pdo->prepare(
+                    'UPDATE leads
+                     SET admission_fee_status = NULL,
+                         admission_fee_amount = :admission_fee_amount,
+                         admission_concession_amount = :admission_concession_amount,
+                         admission_concession_note = :admission_concession_note,
+                         payment_mode = :payment_mode,
+                         class_id = :class_id,
+                         class_applied = :class_applied,
+                         admission_fee_paid = 1,
+                         payment_confirmed_at = :payment_confirmed_at
+                     WHERE id = :id'
+                );
+                $updateFee->execute([
+                    'admission_fee_amount' => $feeAmount,
+                    'admission_concession_amount' => $normalizedConcessionAmount,
+                    'admission_concession_note' => $normalizedConcessionNote,
+                    'payment_mode' => $paymentMode,
+                    'class_id' => $classId,
+                    'class_applied' => $classApplied,
+                    'payment_confirmed_at' => date('Y-m-d H:i:s'),
+                    'id' => $leadId,
+                ]);
+
+                $concessionChanged = $normalizedConcessionAmount > 0 && (
+                    abs((float)($leadRow['admission_concession_amount'] ?? 0) - $normalizedConcessionAmount) > 0.0001 ||
+                    trim((string)($leadRow['admission_concession_note'] ?? '')) !== (string)$normalizedConcessionNote
+                );
+                if ($concessionChanged) {
+                    notify_superadmin_of_concession($pdo, [
+                        'id' => $leadId,
+                        'lead_name' => (string)$leadRow['lead_name'],
+                    ], $classApplied, $normalizedConcessionAmount, (string)$normalizedConcessionNote);
+                }
+
+                $pdo->commit();
+                $success[] = 'Admission fee details updated.';
+            } catch (Throwable $throwable) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $errors[] = 'Unable to update admission fee details: ' . $throwable->getMessage();
+            }
+        }
+    }
+
+    if ($action === 'apply_concession') {
+        $leadId = (int)($_POST['lead_id'] ?? 0);
+        $concessionAmount = (float)($_POST['admission_concession_amount'] ?? 0);
+        $concessionNote = trim($_POST['admission_concession_note'] ?? '');
+
+        if ($leadId <= 0) {
+            $errors[] = 'Invalid concession request.';
+        } elseif ($concessionAmount < 0) {
+            $errors[] = 'Concession amount cannot be negative.';
+        } elseif ($concessionAmount > 0 && $concessionNote === '') {
+            $errors[] = 'Add a note explaining the concession.';
+        } else {
+            try {
+                $pdo->beginTransaction();
+
+                $leadLookup = $pdo->prepare(
+                    'SELECT id, lead_name, class_applied, admission_concession_amount, admission_concession_note
+                     FROM leads
+                     WHERE id = :id
+                     LIMIT 1 FOR UPDATE'
+                );
+                $leadLookup->execute(['id' => $leadId]);
+                $leadRow = $leadLookup->fetch();
+
+                if (!$leadRow) {
+                    throw new RuntimeException('Lead not found.');
+                }
+
+                $normalizedConcessionAmount = $concessionAmount > 0 ? $concessionAmount : 0.0;
+                $normalizedConcessionNote = $normalizedConcessionAmount > 0 ? $concessionNote : null;
+
+                $updateFee = $pdo->prepare(
+                    'UPDATE leads
+                     SET admission_concession_amount = :admission_concession_amount,
+                         admission_concession_note = :admission_concession_note
+                     WHERE id = :id'
+                );
+                $updateFee->execute([
+                    'admission_concession_amount' => $normalizedConcessionAmount,
+                    'admission_concession_note' => $normalizedConcessionNote,
+                    'id' => $leadId,
+                ]);
+
+                if ($normalizedConcessionAmount > 0) {
+                    notify_superadmin_of_concession(
+                        $pdo,
+                        [
+                            'id' => $leadId,
+                            'lead_name' => (string)$leadRow['lead_name'],
+                        ],
+                        (string)($leadRow['class_applied'] ?? 'Unknown class'),
+                        $normalizedConcessionAmount,
+                        (string)$normalizedConcessionNote
+                    );
+                }
+
+                $pdo->commit();
+                $success[] = 'Concession applied successfully.';
+            } catch (Throwable $throwable) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $errors[] = 'Unable to apply concession: ' . $throwable->getMessage();
+            }
         }
     }
 
@@ -524,7 +750,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $resolvedClass = resolve_class_for_lead($pdo, $lead);
                 if (!$resolvedClass) {
-                    throw new RuntimeException('Class mapping not found for this lead. Select class from dropdown in lead row and save fee details.');
+                    throw new RuntimeException('Course mapping not found for this lead. Update the course in lead edit and save fee details.');
                 }
 
                 $enrollmentStmt = $pdo->prepare(
@@ -545,7 +771,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (int)$resolvedClass['session_id']
                 );
                 if (empty($studentFees)) {
-                    throw new RuntimeException('No active fee structure found for this class/session. Create fee structure first.');
+                    throw new RuntimeException('No active fee structure found for this course/session. Create fee structure first.');
+                }
+
+                $admissionConcessionAmount = (float)($lead['admission_concession_amount'] ?? 0);
+                if ($admissionConcessionAmount > 0) {
+                    apply_admission_concession_to_student_fees(
+                        $pdo,
+                        $studentId,
+                        (int)$resolvedClass['id'],
+                        (int)$resolvedClass['session_id'],
+                        $admissionConcessionAmount
+                    );
+                    $studentFees = ensure_student_fees_for_class(
+                        $pdo,
+                        $studentId,
+                        (int)$resolvedClass['id'],
+                        (int)$resolvedClass['session_id']
+                    );
                 }
 
                 apply_lead_payment_credit(
@@ -687,39 +930,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$leadQuery = 'SELECT * FROM leads';
-$whereClauses = [];
-$queryParams = [];
-
-if ($searchName !== '') {
-    $whereClauses[] = '(lead_name LIKE :search_name OR guardian_name LIKE :search_name OR guardian_phone LIKE :search_name OR email LIKE :search_name)';
-    $queryParams['search_name'] = '%' . $searchName . '%';
-}
-if ($searchStatus !== '') {
-    $whereClauses[] = 'status = :status';
-    $queryParams['status'] = $searchStatus;
-}
-
-if (!empty($whereClauses)) {
-    $leadQuery .= ' WHERE ' . implode(' AND ', $whereClauses);
-}
-
-$leadQuery .= ' ORDER BY created_at DESC, id DESC';
-
-$leadsStatement = $pdo->prepare($leadQuery);
-$leadsStatement->execute($queryParams);
+$leadQuery = 'SELECT * FROM leads ORDER BY created_at DESC, id DESC';
+$leadsStatement = $pdo->query($leadQuery);
 $leads = $leadsStatement->fetchAll();
-
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
-$admissionFormLink = $scheme . '://' . $host . '/school-erp/modules/admission/apply.php';
 
 $pageTitle = 'Admission Leads';
 require __DIR__ . '/../../includes/header.php';
 ?>
 <section class="card">
     <h2>Admission & Leads Management</h2>
-    <p>Public admission form link: <a href="<?= htmlspecialchars($admissionFormLink) ?>" target="_blank"><?= htmlspecialchars($admissionFormLink) ?></a></p>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -748,45 +967,23 @@ require __DIR__ . '/../../includes/header.php';
 </section>
 
 <section class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <div class="screen-toolbar">
         <h3>Lead Pipeline</h3>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-            <form method="get" class="filter-bar" style="margin-bottom:0;">
-                <input type="text" name="search_name" placeholder="Search name/phone/email" value="<?= htmlspecialchars($searchName) ?>">
-                <select name="search_status">
-                    <option value="">All Status</option>
-                    <option value="new" <?= $searchStatus === 'new' ? 'selected' : '' ?>>New</option>
-                    <option value="contacted" <?= $searchStatus === 'contacted' ? 'selected' : '' ?>>Contacted</option>
-                    <option value="approved" <?= $searchStatus === 'approved' ? 'selected' : '' ?>>Approved</option>
-                    <option value="rejected" <?= $searchStatus === 'rejected' ? 'selected' : '' ?>>Rejected</option>
-                    <option value="enrolled" <?= $searchStatus === 'enrolled' ? 'selected' : '' ?>>Enrolled</option>
-                </select>
-                <button type="submit">Filter</button>
-                <a href="?" style="font-size:0.85rem; color:var(--primary); text-decoration:none; font-weight:600; margin-left:0.5rem;">Clear</a>
-            </form>
-
-            <a class="nav-item" href="/school-erp/modules/admission/export_leads_excel.php?search_name=<?= urlencode($searchName) ?>&search_status=<?= urlencode($searchStatus) ?>">Download Excel</a>
-
-            <form method="post" action="/school-erp/modules/admission/import_leads_excel.php" enctype="multipart/form-data" class="inline-form">
-                <input type="file" name="excel_file" accept=".csv,.txt" required>
-                <button type="submit">Upload Excel</button>
-            </form>
-        </div>
     </div>
 
     <div class="table-wrap" id="section-table">
-        <table>
+        <table class="compact-table">
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>Photo</th>
                     <th>Student</th>
                     <th>Guardian</th>
-                    <th>Class</th>
+                    <th>Course</th>
                     <th>Status</th>
-                    <th>Admission Fee</th>
                     <th>Source</th>
                     <th>Decision</th>
+                    <th>Concession</th>
                 </tr>
             </thead>
             <tbody>
@@ -811,33 +1008,20 @@ require __DIR__ . '/../../includes/header.php';
                             <?= htmlspecialchars((string)$lead['guardian_name']) ?><br>
                             <small><?= htmlspecialchars((string)($lead['guardian_phone'] ?? '')) ?></small>
                         </td>
-                        <td><?= htmlspecialchars((string)$lead['class_applied']) ?></td>
-                        <td><span class="pill"><?= htmlspecialchars($lead['status']) ?></span></td>
                         <td>
-                            <?php if ((float)($lead['admission_fee_amount'] ?? 0) > 0): ?>
-                                <small>₹<?= number_format((float)$lead['admission_fee_amount'], 2) ?> | <?= htmlspecialchars((string)($lead['payment_mode'] ?? 'cash')) ?></small>
-                            <?php else: ?>
-                                <small>Not updated</small>
-                            <?php endif; ?>
+                            <?= htmlspecialchars((string)$lead['class_applied']) ?>
                         </td>
+                        <td><span class="pill"><?= ucfirst(htmlspecialchars($lead['status'])) ?></span></td>
                         <td><?= htmlspecialchars($lead['source']) ?></td>
-                        <td>
-                            <a class="nav-item" href="/school-erp/modules/admission/edit_lead.php?id=<?= (int)$lead['id'] ?>" style="margin-bottom:6px; display:inline-flex;">Edit</a>
-
-                            <form method="post" class="inline-form" style="margin-bottom:6px;">
+                        <td class="lead-decision-cell">
+                            <div class="lead-actions">
+                            <form method="post" id="lead-fee-form-<?= (int)$lead['id'] ?>" class="inline-form lead-fee-form">
                                 <input type="hidden" name="action" value="update_fee">
                                 <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
-                                <select name="class_id" required>
-                                    <option value="">Class</option>
-                                    <?php foreach ($classOptions as $class): ?>
-                                        <option value="<?= (int)$class['id'] ?>" <?= (int)($lead['class_id'] ?? 0) === (int)$class['id'] ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars((string)$class['class_name'] . ' - ' . (string)$class['section']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <input type="number" name="admission_fee_amount" min="0.01" step="0.01" value="<?= htmlspecialchars((string)($lead['admission_fee_amount'] ?? '')) ?>" placeholder="Admission fee amount" required>
+                                <input type="hidden" name="class_id" value="<?= (int)($lead['class_id'] ?? 0) ?>">
+                                <input type="number" name="admission_fee_amount" min="0.01" step="0.01" value="<?= htmlspecialchars((string)($lead['admission_fee_amount'] ?? '')) ?>" placeholder="Fee" required>
                                 <select name="payment_mode" required>
-                                    <option value="">Mode of payment</option>
+                                    <option value="">Mode</option>
                                     <option value="cash" <?= ($lead['payment_mode'] ?? '') === 'cash' ? 'selected' : '' ?>>Cash</option>
                                     <option value="card" <?= ($lead['payment_mode'] ?? '') === 'card' ? 'selected' : '' ?>>Card</option>
                                     <option value="upi" <?= ($lead['payment_mode'] ?? '') === 'upi' ? 'selected' : '' ?>>UPI</option>
@@ -847,20 +1031,18 @@ require __DIR__ . '/../../includes/header.php';
                                 <button type="submit">Save Fee</button>
                             </form>
 
-                            <?php if ($lead['status'] === 'enrolled'): ?>
-                                <span class="pill">Converted</span>
-                            <?php elseif ($lead['status'] === 'rejected'): ?>
-                                <span class="pill">Rejected</span>
-                            <?php else: ?>
+                            <a class="nav-item nav-item-subtle lead-action-link" href="/school-erp/modules/admission/edit_lead.php?id=<?= (int)$lead['id'] ?>">Edit</a>
+
+                            <?php if (!in_array($lead['status'], ['enrolled', 'rejected'], true)): ?>
                                 <?php if ($isFeeReadyForApproval): ?>
-                                    <form method="post" class="inline-form" onsubmit="return confirm('Approve and generate enrollment credentials now?');">
+                                    <form method="post" class="inline-form lead-status-form" onsubmit="return confirm('Approve and generate enrollment credentials now?');">
                                         <input type="hidden" name="action" value="update_status">
                                         <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
                                         <input type="hidden" name="status" value="approved">
-                                        <button type="submit">Approve &amp; Generate</button>
+                                        <button type="submit">Approve</button>
                                     </form>
                                 <?php else: ?>
-                                    <form method="post" class="inline-form" onsubmit="return confirm('Reject this lead?');">
+                                    <form method="post" class="inline-form lead-status-form" onsubmit="return confirm('Reject this lead?');">
                                         <input type="hidden" name="action" value="update_status">
                                         <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
                                         <input type="hidden" name="status" value="rejected">
@@ -868,12 +1050,28 @@ require __DIR__ . '/../../includes/header.php';
                                     </form>
                                 <?php endif; ?>
                             <?php endif; ?>
-
-                            <form method="post" class="inline-form" style="margin-top:6px;" onsubmit="return confirm('Delete this lead permanently?');">
-                                <input type="hidden" name="action" value="delete_lead">
-                                <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
-                                <button type="submit" class="danger">Delete</button>
-                            </form>
+                            </div>
+                        </td>
+                        <td>
+                            <?php if ((float)($lead['admission_concession_amount'] ?? 0) > 0): ?>
+                                <small>₹<?= number_format((float)$lead['admission_concession_amount'], 2) ?></small><br>
+                                <small><?= htmlspecialchars((string)($lead['admission_concession_note'] ?? '')) ?></small>
+                            <?php else: ?>
+                                <small>No concession</small>
+                            <?php endif; ?>
+                            <div class="concession-trigger-wrap">
+                                <button
+                                    type="button"
+                                    class="btn-concession-slim"
+                                    data-lead-id="<?= (int)$lead['id'] ?>"
+                                    data-lead-name="<?= htmlspecialchars((string)$lead['lead_name'], ENT_QUOTES) ?>"
+                                    data-class-label="<?= htmlspecialchars((string)$lead['class_applied'], ENT_QUOTES) ?>"
+                                    data-current-amount="<?= htmlspecialchars((string)($lead['admission_concession_amount'] ?? ''), ENT_QUOTES) ?>"
+                                    data-current-note="<?= htmlspecialchars((string)($lead['admission_concession_note'] ?? ''), ENT_QUOTES) ?>"
+                                    onclick="openConcessionModal(this)">
+                                    Give Concession
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -886,4 +1084,73 @@ require __DIR__ . '/../../includes/header.php';
         </table>
     </div>
 </section>
+
+<div id="form-concession" class="collapsible-form">
+    <section class="card">
+        <h3>Give Concession</h3>
+        <p id="concessionLeadLabel" class="concession-lead-label"></p>
+        <form method="post" class="form-grid form-grid-wide">
+            <input type="hidden" name="action" value="apply_concession">
+            <input type="hidden" name="lead_id" value="">
+
+            <label>Concession Amount</label>
+            <input type="number" name="admission_concession_amount" min="0" step="0.01" required>
+
+            <label>Concession Note</label>
+            <textarea name="admission_concession_note" rows="4" placeholder="Reason for concession" required></textarea>
+
+            <button type="submit">Apply</button>
+        </form>
+    </section>
+</div>
+
+<script>
+function openConcessionModal(button) {
+    var modal = document.getElementById('form-concession');
+    var overlay = document.getElementById('modal-overlay');
+    var label = document.getElementById('concessionLeadLabel');
+    var leadIdInput = modal ? modal.querySelector('input[name="lead_id"]') : null;
+    var amountInput = modal ? modal.querySelector('input[name="admission_concession_amount"]') : null;
+    var noteInput = modal ? modal.querySelector('textarea[name="admission_concession_note"]') : null;
+
+    if (!modal || !overlay || !button) {
+        return;
+    }
+
+    if (leadIdInput) {
+        leadIdInput.value = button.dataset.leadId || '';
+    }
+    if (amountInput) {
+        amountInput.value = button.dataset.currentAmount || '';
+    }
+    if (noteInput) {
+        noteInput.value = button.dataset.currentNote || '';
+    }
+    if (label) {
+        var leadName = button.dataset.leadName || 'Selected lead';
+        var classLabel = button.dataset.classLabel || 'Unknown class';
+        label.textContent = leadName + ' | ' + classLabel;
+    }
+
+    document.querySelectorAll('.collapsible-form.active').forEach(function(form) {
+        form.classList.remove('active');
+    });
+
+    modal.classList.add('active');
+    overlay.classList.add('active');
+    document.body.classList.add('modal-open');
+
+    if (!modal.querySelector('.modal-close-btn')) {
+        var closeBtn = document.createElement('span');
+        closeBtn.className = 'modal-close-btn';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.onclick = function() {
+            modal.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.classList.remove('modal-open');
+        };
+        modal.prepend(closeBtn);
+    }
+}
+</script>
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

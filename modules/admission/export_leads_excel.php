@@ -5,7 +5,7 @@ require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN]);
 $searchName = trim($_GET['search_name'] ?? '');
 $searchStatus = trim($_GET['search_status'] ?? '');
 
-$sql = 'SELECT id, lead_name, guardian_name, guardian_phone, guardian_email, email, phone, class_applied, status, admission_fee_amount, payment_mode, source, created_at FROM leads';
+$sql = 'SELECT id, lead_name, guardian_name, guardian_phone, guardian_email, email, phone, class_applied, status, admission_fee_amount, admission_concession_amount, admission_concession_note, payment_mode, source, created_at FROM leads';
 $params = [];
 $whereClauses = [];
 
@@ -36,7 +36,7 @@ header('Expires: 0');
 
 echo "<table border='1'>";
 echo '<tr>';
-echo '<th>ID</th><th>Lead Name</th><th>Guardian Name</th><th>Guardian Phone</th><th>Guardian Email</th><th>Email</th><th>Phone</th><th>Class Applied</th><th>Status</th><th>Admission Fee Amount</th><th>Payment Mode</th><th>Source</th><th>Created At</th>';
+echo '<th>ID</th><th>Lead Name</th><th>Guardian Name</th><th>Guardian Phone</th><th>Guardian Email</th><th>Email</th><th>Phone</th><th>Course Applied</th><th>Status</th><th>Admission Fee Amount</th><th>Concession Amount</th><th>Concession Note</th><th>Payment Mode</th><th>Source</th><th>Created At</th>';
 echo '</tr>';
 
 foreach ($rows as $row) {
@@ -51,6 +51,8 @@ foreach ($rows as $row) {
     echo '<td>' . htmlspecialchars((string)$row['class_applied']) . '</td>';
     echo '<td>' . htmlspecialchars((string)$row['status']) . '</td>';
     echo '<td>' . number_format((float)($row['admission_fee_amount'] ?? 0), 2, '.', '') . '</td>';
+    echo '<td>' . number_format((float)($row['admission_concession_amount'] ?? 0), 2, '.', '') . '</td>';
+    echo '<td>' . htmlspecialchars((string)$row['admission_concession_note']) . '</td>';
     echo '<td>' . htmlspecialchars((string)$row['payment_mode']) . '</td>';
     echo '<td>' . htmlspecialchars((string)$row['source']) . '</td>';
     echo '<td>' . htmlspecialchars((string)$row['created_at']) . '</td>';

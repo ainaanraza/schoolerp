@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $remarkRows = $_POST['remarks'] ?? [];
 
     if ($selectedClassId <= 0) {
-        $errors[] = 'Class is required.';
+        $errors[] = 'Course is required.';
     }
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)) {
         $errors[] = 'Invalid date format.';
@@ -116,12 +116,12 @@ require __DIR__ . '/../../includes/header.php';
     <?php endif; ?>
 
     <form method="get" class="form-grid form-grid-wide">
-        <label>Class</label>
+        <label>Course</label>
         <select name="class_id" required>
-            <option value="">Select class</option>
+            <option value="">Select course</option>
             <?php foreach ($classes as $class): ?>
                 <option value="<?= (int)$class['id'] ?>" <?= $selectedClassId === (int)$class['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($class['class_name'] . ' - ' . $class['section'] . ' (' . $class['session_title'] . ')') ?>
+                    <?= htmlspecialchars($class['class_name'] . ' (' . $class['session_title'] . ')') ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -133,7 +133,7 @@ require __DIR__ . '/../../includes/header.php';
     </form>
 
     <?php if ($selectedClassId > 0): ?>
-        <form method="post" class="card" style="margin-top: 16px;">
+        <form method="post" class="card card-offset-top">
             <input type="hidden" name="action" value="update_attendance">
             <input type="hidden" name="class_id" value="<?= (int)$selectedClassId ?>">
             <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($selectedDate) ?>">
@@ -148,7 +148,6 @@ require __DIR__ . '/../../includes/header.php';
                             <th>Status</th>
                             <th>Remarks</th>
                             <th>Last Marked By</th>
-                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -167,20 +166,12 @@ require __DIR__ . '/../../includes/header.php';
                                 </td>
                                 <td><input type="text" name="remarks[<?= (int)$record['id'] ?>]" value="<?= htmlspecialchars((string)$record['remarks']) ?>"></td>
                                 <td><?= htmlspecialchars((string)($record['marked_by_name'] ?: '-')) ?></td>
-                                <td>
-                                    <form method="post" class="inline-form" onsubmit="return confirm('Delete this attendance row?');">
-                                        <input type="hidden" name="action" value="delete_attendance_row">
-                                        <input type="hidden" name="attendance_id" value="<?= (int)$record['id'] ?>">
-                                        <input type="hidden" name="class_id" value="<?= (int)$selectedClassId ?>">
-                                        <input type="hidden" name="attendance_date" value="<?= htmlspecialchars($selectedDate) ?>">
-                                        <button type="submit" class="danger">Delete</button>
-                                    </form>
-                                </td>
+
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($records)): ?>
                             <tr>
-                                <td colspan="7">No attendance records found for selected class/date.</td>
+                                <td colspan="6">No attendance records found for selected course/date.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -188,7 +179,7 @@ require __DIR__ . '/../../includes/header.php';
             </div>
 
             <?php if (!empty($records)): ?>
-                <button type="submit" style="margin-top: 12px;">Update Attendance</button>
+                <button type="submit" class="form-submit-spacer">Update Attendance</button>
             <?php endif; ?>
         </form>
     <?php endif; ?>

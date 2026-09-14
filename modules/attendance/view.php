@@ -122,12 +122,12 @@ require __DIR__ . '/../../includes/header.php';
         <input type="date" name="to_date" value="<?= htmlspecialchars($toDate) ?>" required>
 
         <?php if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_TEACHER], true)): ?>
-            <label>Class (optional)</label>
+            <label>Course (optional)</label>
             <select name="class_id">
-                <option value="0">All classes</option>
+                <option value="0">All courses</option>
                 <?php foreach ($classes as $class): ?>
                     <option value="<?= (int)$class['id'] ?>" <?= $selectedClassId === (int)$class['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($class['class_name'] . ' - ' . $class['section'] . ' (' . $class['session_title'] . ')') ?>
+                        <?= htmlspecialchars($class['class_name'] . ' (' . $class['session_title'] . ')') ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -136,7 +136,7 @@ require __DIR__ . '/../../includes/header.php';
         <button type="submit">Apply Filter</button>
     </form>
 
-    <div class="grid-2" style="margin-top: 16px;">
+    <div class="grid-2 card-offset-top">
         <div class="card">
             <h3>Summary</h3>
             <p><strong>Total Entries:</strong> <?= (int)$summary['total'] ?></p>
@@ -147,12 +147,12 @@ require __DIR__ . '/../../includes/header.php';
         </div>
     </div>
 
-    <div class="table-wrap" id="section-table" style="margin-top: 16px;">
+    <div class="table-wrap table-wrap-offset" id="section-table">
         <table>
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Class</th>
+                    <th>Course</th>
                     <th>Roll</th>
                     <th>Admission</th>
                     <th>Student</th>
@@ -164,7 +164,7 @@ require __DIR__ . '/../../includes/header.php';
                 <?php foreach ($records as $record): ?>
                     <tr>
                         <td><?= htmlspecialchars((string)$record['attendance_date']) ?></td>
-                        <td><?= htmlspecialchars((string)$record['class_name'] . ' - ' . (string)$record['section']) ?></td>
+                        <td><?= htmlspecialchars((string)$record['class_name']) ?></td>
                         <td><?= htmlspecialchars((string)($record['roll_number'] ?: '-')) ?></td>
                         <td><?= htmlspecialchars((string)$record['admission_no']) ?></td>
                         <td><?= htmlspecialchars((string)$record['student_name']) ?></td>

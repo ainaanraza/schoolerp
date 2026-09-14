@@ -41,7 +41,7 @@ header('Expires: 0');
 
 echo "<table border='1'>";
 echo '<tr>';
-echo '<th>ID</th><th>Admission No</th><th>Student Name</th><th>Student Email</th><th>Roll Number</th><th>Status</th><th>Class</th><th>Created At</th>';
+echo '<th>ID</th><th>Admission No</th><th>Student Name</th><th>Student Email</th><th>Roll Number</th><th>Status</th><th>Course</th><th>Created At</th>';
 echo '</tr>';
 
 foreach ($rows as $row) {

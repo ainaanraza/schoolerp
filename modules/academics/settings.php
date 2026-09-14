@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $pdo->commit();
-                $success[] = 'Academic session deleted with related classes and records.';
+                $success[] = 'Academic session deleted with related courses and records.';
             } catch (Throwable $throwable) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
@@ -162,55 +162,22 @@ require __DIR__ . '/../../includes/header.php';
         </div>
     <?php endif; ?>
 
-    <div class="grid-2">
-        <section class="card">
-            <h3>School Profile</h3>
-            <form method="post" class="form-grid form-grid-wide">
-                <input type="hidden" name="action" value="update_school">
-
-                <label>School Name</label>
-                <input type="text" name="school_name" value="<?= htmlspecialchars((string)$school['name']) ?>" required>
-
-                <label>Logo Path (optional)</label>
-                <input type="text" name="logo_path" value="<?= htmlspecialchars((string)$school['logo_path']) ?>" placeholder="/assets/images/logo.png">
-
-                <button type="submit">Save School Settings</button>
-            </form>
-        </section>
-
-        <section class="card">
-            <h3>Create Academic Session</h3>
-            <form method="post" class="form-grid form-grid-wide">
-                <input type="hidden" name="action" value="create_session">
-
-                <label>Session Title</label>
-                <input type="text" name="title" placeholder="2026-2027" required>
-
-                <label>Start Date</label>
-                <input type="date" name="start_date" required>
-
-                <label>End Date</label>
-                <input type="date" name="end_date" required>
-
-                <label>
-                    <input type="checkbox" name="is_active" checked>
-                    Mark as active session
-                </label>
-
-                <button type="submit">Add Session</button>
-            </form>
-        </section>
-    </div>
-
+    <!-- CLEAN TABLES VIEW FIRST -->
     <section class="card">
-        <h3>Academic Sessions</h3>
+        <div class="form-header-actions">
+            <h3>Academic Sessions</h3>
+            <div class="toolbar-actions-tight">
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-session', this)">+ Add Session</button>
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-school', this)">Edit School Profile</button>
+            </div>
+        </div>
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
                         <th>Title</th>
                         <th>Duration</th>
-                        <th>Classes</th>
+                        <th>Courses</th>
                         <th>Status</th>
                         <th>Action</th>
                     </tr>
@@ -224,16 +191,12 @@ require __DIR__ . '/../../includes/header.php';
                             <td><span class="pill"><?= (int)$session['is_active'] === 1 ? 'Active' : 'Inactive' ?></span></td>
                             <td>
                                 <?php if ((int)$session['is_active'] !== 1): ?>
-                                    <form method="post" class="inline-form" style="margin-bottom:6px;">
+                                    <form method="post" class="inline-form">
                                         <input type="hidden" name="action" value="activate_session">
                                         <input type="hidden" name="session_id" value="<?= (int)$session['id'] ?>">
                                         <button type="submit">Set Active</button>
                                     </form>
-                                    <form method="post" class="inline-form" onsubmit="return confirm('Delete this session and all related classes/records?');">
-                                        <input type="hidden" name="action" value="delete_session">
-                                        <input type="hidden" name="session_id" value="<?= (int)$session['id'] ?>">
-                                        <button type="submit" class="danger">Delete</button>
-                                    </form>
+
                                 <?php else: ?>
                                     <span>Current Session</span>
                                 <?php endif; ?>
@@ -247,5 +210,49 @@ require __DIR__ . '/../../includes/header.php';
             </table>
         </div>
     </section>
+
 </section>
+
+<div id="form-school" class="collapsible-form">
+    <section class="card">
+        <h3>School Profile</h3>
+        <form method="post" class="form-grid form-grid-wide">
+            <input type="hidden" name="action" value="update_school">
+
+            <label>School Name</label>
+            <input type="text" name="school_name" value="<?= htmlspecialchars((string)$school['name']) ?>" required>
+
+            <label>Logo Path (optional)</label>
+            <input type="text" name="logo_path" value="<?= htmlspecialchars((string)$school['logo_path']) ?>" placeholder="/assets/images/logo.png">
+
+            <button type="submit">Save School Settings</button>
+        </form>
+    </section>
+</div>
+
+<div id="form-session" class="collapsible-form">
+    <section class="card">
+        <h3>Create Academic Session</h3>
+        <form method="post" class="form-grid form-grid-wide">
+            <input type="hidden" name="action" value="create_session">
+
+            <label>Session Title</label>
+            <input type="text" name="title" placeholder="2026-2027" required>
+
+            <label>Start Date</label>
+            <input type="date" name="start_date" required>
+
+            <label>End Date</label>
+            <input type="date" name="end_date" required>
+
+            <label>
+                <input type="checkbox" name="is_active" checked>
+                Mark as active session
+            </label>
+
+            <button type="submit">Add Session</button>
+        </form>
+    </section>
+</div>
+
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

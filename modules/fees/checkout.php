@@ -387,7 +387,7 @@ require __DIR__ . '/../../includes/header.php';
                     })();
                 </script>
             <?php else: ?>
-                <form method="post" class="form-grid" style="margin-top: 12px;">
+                <form method="post" class="form-grid form-submit-spacer">
                     <input type="hidden" name="action" value="create_razorpay_order">
                     <input type="hidden" name="student_fee_id" value="<?= (int)$studentFeeId ?>">
                     <input type="hidden" name="amount" value="<?= htmlspecialchars((string)$requestedAmount) ?>">
@@ -395,14 +395,14 @@ require __DIR__ . '/../../includes/header.php';
                 </form>
             <?php endif; ?>
         <?php else: ?>
-            <form method="post" class="form-grid" style="margin-top: 12px;">
+            <form method="post" class="form-grid form-submit-spacer">
                 <input type="hidden" name="action" value="confirm_payment">
                 <input type="hidden" name="student_fee_id" value="<?= (int)$studentFeeId ?>">
                 <input type="hidden" name="amount" value="<?= htmlspecialchars((string)$requestedAmount) ?>">
                 <button type="submit">Confirm and Pay</button>
             </form>
         <?php endif; ?>
-        <p style="margin-top: 8px;"><a href="/school-erp/modules/fees/student_fees.php">Cancel</a></p>
+        <p class="table-wrap-offset"><a href="/school-erp/modules/fees/student_fees.php">Cancel</a></p>
     <?php endif; ?>
 </section>
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

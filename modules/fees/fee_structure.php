@@ -52,14 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowedFeeTypes = ['admission_fee', 'caution_money', 'tuition_fee'];
 
         if ($classId <= 0 || $feeTitle === '' || $amount <= 0 || !in_array($billingCycle, $allowedCycles, true) || !in_array($feeType, $allowedFeeTypes, true)) {
-            $errors[] = 'Please provide valid class, fee type, fee title, amount, and billing cycle.';
+            $errors[] = 'Please provide valid course, fee type, fee title, amount, and billing cycle.';
         } else {
             $classLookup = $pdo->prepare('SELECT id, session_id FROM classes WHERE id = :id LIMIT 1');
             $classLookup->execute(['id' => $classId]);
             $classRow = $classLookup->fetch();
 
             if (!$classRow) {
-                $errors[] = 'Selected class not found.';
+                $errors[] = 'Selected course not found.';
             } else {
                 $dueDay = null;
                 if ($dueDayRaw !== '') {
@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $students = $studentsStatement->fetchAll();
 
                 if (empty($students)) {
-                    $errors[] = 'No active enrolled students found in this class/session.';
+                    $errors[] = 'No active enrolled students found in this course/session.';
                 } else {
                     $insertFee = $pdo->prepare(
                         'INSERT INTO student_fees (student_id, fee_structure_id, period_label, total_amount, discount_amount, payable_amount, paid_amount, status, due_date)
@@ -227,128 +227,133 @@ require __DIR__ . '/../../includes/header.php';
         </div>
     <?php endif; ?>
 
-    <?php if (empty($classes)): ?>
-        <p>No classes found. Create classes in Academic Setup before configuring fee structures.</p>
-    <?php else: ?>
-        <div class="grid-2">
-            <section class="card">
-                <h3>Create Fee Structure</h3>
-                <form method="post" class="form-grid form-grid-wide">
-                    <input type="hidden" name="action" value="create_structure">
-
-                    <label>Particular Course (Class/Section)</label>
-                    <select name="class_id" required>
-                        <option value="">Select class</option>
-                        <?php foreach ($classes as $class): ?>
-                            <option value="<?= (int)$class['id'] ?>">
-                                <?= htmlspecialchars($class['class_name'] . ' - ' . $class['section'] . ' (' . $class['session_title'] . ')') ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <label>Fee Type</label>
-                    <select name="fee_type" required>
-                        <option value="admission_fee">Admission Fee</option>
-                        <option value="caution_money">Caution Money</option>
-                        <option value="tuition_fee">Tuition Fee</option>
-                    </select>
-
-                    <label>Fee Title</label>
-                    <input type="text" name="fee_title" placeholder="Tuition Fee" required>
-
-                    <label>Amount</label>
-                    <input type="number" name="amount" min="1" step="0.01" required>
-
-                    <label>Billing Cycle</label>
-                    <select name="billing_cycle" required>
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="half_yearly">Half Yearly</option>
-                        <option value="yearly">Yearly</option>
-                        <option value="one_time">One Time</option>
-                    </select>
-
-                    <label>Due Day (optional)</label>
-                    <input type="number" name="due_day" min="1" max="31" placeholder="5">
-
-                    <button type="submit">Create Structure</button>
-                </form>
-            </section>
-
-            <section class="card">
-                <h3>Generate Fees for Period</h3>
-                <form method="post" class="form-grid form-grid-wide">
-                    <input type="hidden" name="action" value="generate_fees">
-
-                    <label>Fee Structure</label>
-                    <select name="fee_structure_id" required>
-                        <option value="">Select structure</option>
-                        <?php foreach ($structures as $structure): ?>
-                            <option value="<?= (int)$structure['id'] ?>">
-                                <?= htmlspecialchars(fee_type_label((string)$structure['fee_type']) . ' | ' . $structure['fee_title'] . ' | ' . $structure['class_name'] . '-' . $structure['section'] . ' | ' . $structure['billing_cycle']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <label>Period Label</label>
-                    <input type="text" name="period_label" placeholder="Apr-2026" required>
-
-                    <label>Due Date (optional)</label>
-                    <input type="date" name="due_date">
-
-                    <button type="submit">Generate Student Fees</button>
-                </form>
-            </section>
+    <!-- CLEAN TABLES VIEW FIRST -->
+    <section class="card">
+        <div class="form-header-actions">
+            <h3>Existing Fee Structures</h3>
+            <div class="screen-toolbar-actions">
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-create-structure', this)">+ Create Structure</button>
+                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-generate-fees', this)">Generate Fees</button>
+            </div>
         </div>
-    <?php endif; ?>
+        <div class="table-wrap">
+            <table class="compact-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Title</th>
+                        <th>Course</th>
+                        <th>Session</th>
+                        <th>Cycle</th>
+                        <th>Amount</th>
+                        <th>Due Day</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($structures as $structure): ?>
+                        <tr>
+                            <td><?= (int)$structure['id'] ?></td>
+                            <td><?= htmlspecialchars(fee_type_label((string)$structure['fee_type'])) ?></td>
+                            <td><?= htmlspecialchars($structure['fee_title']) ?></td>
+                            <td><?= htmlspecialchars($structure['class_name']) ?></td>
+                            <td><?= htmlspecialchars($structure['session_title']) ?></td>
+                            <td><?= htmlspecialchars($structure['billing_cycle']) ?></td>
+                            <td><?= number_format((float)$structure['amount'], 2) ?></td>
+                            <td><?= htmlspecialchars((string)($structure['due_day'] ?? '-')) ?></td>
+                            <td><span class="pill"><?= (int)$structure['is_active'] === 1 ? 'active' : 'inactive' ?></span></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($structures)): ?>
+                        <tr>
+                             <td colspan="9">No fee structures created yet.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
 </section>
 
-<section class="card">
-    <h3>Existing Fee Structures</h3>
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Type</th>
-                    <th>Title</th>
-                    <th>Class</th>
-                    <th>Session</th>
-                    <th>Cycle</th>
-                    <th>Amount</th>
-                    <th>Due Day</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($structures as $structure): ?>
-                    <tr>
-                        <td><?= (int)$structure['id'] ?></td>
-                        <td><?= htmlspecialchars(fee_type_label((string)$structure['fee_type'])) ?></td>
-                        <td><?= htmlspecialchars($structure['fee_title']) ?></td>
-                        <td><?= htmlspecialchars($structure['class_name'] . ' - ' . $structure['section']) ?></td>
-                        <td><?= htmlspecialchars($structure['session_title']) ?></td>
-                        <td><?= htmlspecialchars($structure['billing_cycle']) ?></td>
-                        <td><?= number_format((float)$structure['amount'], 2) ?></td>
-                        <td><?= htmlspecialchars((string)($structure['due_day'] ?? '-')) ?></td>
-                        <td><span class="pill"><?= (int)$structure['is_active'] === 1 ? 'active' : 'inactive' ?></span></td>
-                        <td>
-                            <form method="post" class="inline-form" onsubmit="return confirm('Delete this fee structure and all generated fee/payment records?');">
-                                <input type="hidden" name="action" value="delete_structure">
-                                <input type="hidden" name="fee_structure_id" value="<?= (int)$structure['id'] ?>">
-                                <button type="submit" class="danger">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                <?php if (empty($structures)): ?>
-                    <tr>
-                        <td colspan="10">No fee structures created yet.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+<?php if (!empty($classes)): ?>
+    <div id="form-create-structure" class="collapsible-form">
+        <section class="card">
+            <h3>Create Fee Structure</h3>
+            <form method="post" class="form-grid form-grid-wide">
+                <input type="hidden" name="action" value="create_structure">
+
+                <label>Course</label>
+                <select name="class_id" required>
+                    <option value="">Select course</option>
+                    <?php foreach ($classes as $class): ?>
+                        <option value="<?= (int)$class['id'] ?>">
+                            <?= htmlspecialchars($class['class_name'] . ' (' . $class['session_title'] . ')') ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <label>Fee Type</label>
+                <select name="fee_type" required>
+                    <option value="admission_fee">Admission Fee</option>
+                    <option value="caution_money">Caution Money</option>
+                    <option value="tuition_fee">Tuition Fee</option>
+                </select>
+
+                <label>Fee Title</label>
+                <input type="text" name="fee_title" placeholder="Tuition Fee" required>
+
+                <label>Amount</label>
+                <input type="number" name="amount" min="1" step="0.01" required>
+
+                <label>Billing Cycle</label>
+                <select name="billing_cycle" required>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="half_yearly">Half Yearly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="one_time">One Time</option>
+                </select>
+
+                <label>Due Day (optional)</label>
+                <input type="number" name="due_day" min="1" max="31" placeholder="5">
+
+                <button type="submit">Create Structure</button>
+            </form>
+        </section>
     </div>
-</section>
+
+    <div id="form-generate-fees" class="collapsible-form">
+        <section class="card">
+            <h3>Generate Fees for Period</h3>
+            <form method="post" class="form-grid form-grid-wide">
+                <input type="hidden" name="action" value="generate_fees">
+
+                <label>Fee Structure</label>
+                <select name="fee_structure_id" required>
+                    <option value="">Select structure</option>
+                    <?php foreach ($structures as $structure): ?>
+                        <option value="<?= (int)$structure['id'] ?>">
+                            <?= htmlspecialchars(fee_type_label((string)$structure['fee_type']) . ' | ' . $structure['fee_title'] . ' | ' . $structure['class_name'] . ' | ' . $structure['billing_cycle']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <label>Period Label</label>
+                <input type="text" name="period_label" placeholder="Apr-2026" required>
+
+                <label>Due Date (optional)</label>
+                <input type="date" name="due_date">
+
+                <button type="submit">Generate Student Fees</button>
+            </form>
+        </section>
+    </div>
+<?php else: ?>
+    <section class="card">
+        <p>No courses found. Create courses in Course Setup before configuring fee structures.</p>
+    </section>
+<?php endif; ?>
+
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

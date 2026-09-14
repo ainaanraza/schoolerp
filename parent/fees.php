@@ -167,7 +167,6 @@ require __DIR__ . '/../includes/header.php';
         <div class="metric-card"><p class="metric-label">Outstanding</p><p class="metric-value">₹<?= number_format(array_sum(array_map(static fn(array $row): float => (float)$row['outstanding'], $summaryRows)), 2) ?></p></div>
     </div>
 
-    <p><a href="/school-erp/modules/fees/student_fees.php">Open detailed fee summary</a></p>
 
     <div class="table-wrap" id="section-table">
         <table>

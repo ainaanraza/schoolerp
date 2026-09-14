@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Invalid gender selected.';
     }
     if ($classId <= 0) {
-        $errors[] = 'Please select a class.';
+        $errors[] = 'Please select a course.';
     }
     if ($dob !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
         $errors[] = 'Date of birth must be in YYYY-MM-DD format.';
@@ -193,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $classStatement->execute(['class_id' => $classId]);
         $selectedClass = $classStatement->fetch();
         if (!$selectedClass) {
-            $errors[] = 'Selected class was not found.';
+            $errors[] = 'Selected course was not found.';
         }
     }
 
@@ -320,7 +320,7 @@ require __DIR__ . '/../../includes/header.php';
 ?>
 <section class="card">
     <h2>Edit Student</h2>
-    <p>Update the student profile, current class assignment, and enrollment details.</p>
+    <p>Update the student profile, current course assignment, and enrollment details.</p>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -361,15 +361,15 @@ require __DIR__ . '/../../includes/header.php';
             <div class="photo-preview" id="photoPreview">
                 <?php if (!empty($student['photo_path'])): ?>
                     <img id="previewImg" src="<?= htmlspecialchars((string)$student['photo_path']) ?>" alt="Student Photo">
-                    <span id="previewPlaceholder" style="display:none;">No photo selected</span>
+                    <span id="previewPlaceholder" class="is-hidden">No photo selected</span>
                 <?php else: ?>
-                    <img id="previewImg" src="" alt="Student Photo" style="display:none;">
+                    <img id="previewImg" src="" alt="Student Photo" class="is-hidden">
                     <span id="previewPlaceholder">No photo selected</span>
                 <?php endif; ?>
             </div>
             <div class="photo-actions">
                 <label class="photo-btn" for="photoFileInput">Upload</label>
-                <input type="file" id="photoFileInput" name="photo" accept="image/jpeg,image/png,image/webp" style="display:none;">
+                <input type="file" id="photoFileInput" name="photo" accept="image/jpeg,image/png,image/webp" class="is-hidden">
                 <button type="button" class="photo-btn" id="cameraBtn">Camera</button>
                 <button type="button" class="photo-btn photo-btn-danger" id="clearPhotoBtn">Clear</button>
             </div>
@@ -377,10 +377,10 @@ require __DIR__ . '/../../includes/header.php';
             <input type="hidden" name="remove_photo" id="removePhotoInput" value="0">
         </div>
 
-        <div id="cameraModal" class="camera-modal" style="display:none;">
+        <div id="cameraModal" class="camera-modal is-hidden">
             <div class="camera-modal-inner">
                 <video id="cameraFeed" autoplay playsinline></video>
-                <canvas id="cameraCanvas" style="display:none;"></canvas>
+            <canvas id="cameraCanvas" class="is-hidden"></canvas>
                 <div class="camera-modal-actions">
                     <button type="button" id="captureBtn" class="photo-btn">Capture</button>
                     <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>
@@ -404,12 +404,12 @@ require __DIR__ . '/../../includes/header.php';
             <option value="inactive" <?= ($student['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
         </select>
 
-        <label>Class Assignment</label>
+        <label>Course Assignment</label>
         <select name="class_id" required>
-            <option value="">Select class</option>
+            <option value="">Select course</option>
             <?php foreach ($classes as $class): ?>
                 <option value="<?= (int)$class['id'] ?>" <?= (int)($student['class_id'] ?? 0) === (int)$class['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($class['class_name'] . ' - ' . $class['section'] . ' (' . $class['session_title'] . ')') ?>
+                    <?= htmlspecialchars($class['class_name'] . ' (' . $class['session_title'] . ')') ?>
                 </option>
             <?php endforeach; ?>
         </select>

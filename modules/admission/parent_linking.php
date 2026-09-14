@@ -116,8 +116,6 @@ $links = $linksStatement->fetchAll();
 $pageTitle = 'Parent-Child Linking';
 require __DIR__ . '/../../includes/header.php';
 ?>
-<section class="card">
-    <h2>Parent-Child Linking</h2>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -135,87 +133,90 @@ require __DIR__ . '/../../includes/header.php';
         </div>
     <?php endif; ?>
 
-    <form method="post" class="form-grid form-grid-wide">
-        <input type="hidden" name="action" value="link_parent_student">
-
-        <label>Parent</label>
-        <select name="parent_id" required>
-            <option value="">Select parent</option>
-            <?php foreach ($parents as $parent): ?>
-                <option value="<?= (int)$parent['id'] ?>"><?= htmlspecialchars($parent['full_name'] . ' (' . $parent['email'] . ')') ?></option>
-            <?php endforeach; ?>
-        </select>
-
-        <label>Student</label>
-        <select name="student_id" required>
-            <option value="">Select student</option>
-            <?php foreach ($students as $student): ?>
-                <option value="<?= (int)$student['id'] ?>"><?= htmlspecialchars($student['full_name'] . ' | ' . $student['admission_no']) ?></option>
-            <?php endforeach; ?>
-        </select>
-
-        <label>Relation</label>
-        <input type="text" name="relation" value="guardian" placeholder="guardian / father / mother">
-
-        <button type="submit">Save Relation</button>
-    </form>
-</section>
-
-<section class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h3>Linked Parent-Child Records</h3>
-        <form method="get" class="filter-bar" style="margin-bottom:0;">
+    <section class="card">
+        <div class="form-header-actions">
+            <h3>Linked Parent-Child Records</h3>
+            <button type="button" class="btn-toggle-form" onclick="toggleForm('form-link-relation', this)">+ New Link</button>
+        </div>
+        
+        <form method="get" class="filter-bar">
             <input type="text" name="search" placeholder="Search parent/student" value="<?= htmlspecialchars($searchQuery) ?>">
             <button type="submit">Search</button>
-            <a href="?" style="font-size:0.85rem; color:var(--primary); text-decoration:none; font-weight:600; margin-left:0.5rem;">Clear</a>
+            <a href="?" class="toolbar-link-clear">Clear</a>
         </form>
-    </div>
-    
-    <div class="table-wrap" id="section-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Parent</th>
-                    <th>Student</th>
-                    <th>Relation</th>
-                    <th>Created</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($links as $link): ?>
+        
+        <div class="table-wrap" id="section-table">
+            <table>
+                <thead>
                     <tr>
-                        <td><?= (int)$link['id'] ?></td>
-                        <td>
-                            <?= htmlspecialchars($link['parent_name']) ?><br>
-                            <small><?= htmlspecialchars((string)$link['parent_email']) ?></small>
-                        </td>
-                        <td>
-                            <?= htmlspecialchars((string)$link['student_name']) ?> (<?= htmlspecialchars((string)$link['admission_no']) ?>)<br>
-                            <small><?= htmlspecialchars((string)$link['student_email']) ?></small>
-                        </td>
-                        <td><?= htmlspecialchars((string)$link['relation']) ?></td>
-                        <td><?= htmlspecialchars((string)$link['created_at']) ?></td>
-                        <td>
-                            <form method="post" class="inline-form" onsubmit="return confirm('Remove this relation?');">
-                                <input type="hidden" name="action" value="unlink_parent_student">
-                                <input type="hidden" name="link_id" value="<?= (int)$link['id'] ?>">
-                                <button type="submit">Unlink</button>
-                            </form>
-                            <form method="post" class="inline-form" style="margin-top:6px;" onsubmit="return confirm('Delete this parent account and all its links?');">
-                                <input type="hidden" name="action" value="delete_parent_account">
-                                <input type="hidden" name="parent_id" value="<?= (int)$link['parent_id'] ?>">
-                                <button type="submit" class="danger">Delete Parent</button>
-                            </form>
-                        </td>
+                        <th>ID</th>
+                        <th>Parent</th>
+                        <th>Student</th>
+                        <th>Relation</th>
+                        <th>Created</th>
+                        <th>Action</th>
                     </tr>
-                <?php endforeach; ?>
-                <?php if (empty($links)): ?>
-                    <tr><td colspan="6">No parent-child links found matching your search.</td></tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php foreach ($links as $link): ?>
+                        <tr>
+                            <td><?= (int)$link['id'] ?></td>
+                            <td>
+                                <?= htmlspecialchars($link['parent_name']) ?><br>
+                                <small><?= htmlspecialchars((string)$link['parent_email']) ?></small>
+                            </td>
+                            <td>
+                                <?= htmlspecialchars((string)$link['student_name']) ?> (<?= htmlspecialchars((string)$link['admission_no']) ?>)<br>
+                                <small><?= htmlspecialchars((string)$link['student_email']) ?></small>
+                            </td>
+                            <td><?= htmlspecialchars((string)$link['relation']) ?></td>
+                            <td><?= htmlspecialchars((string)$link['created_at']) ?></td>
+                            <td>
+                                <form method="post" class="inline-form" onsubmit="return confirm('Remove this relation?');">
+                                    <input type="hidden" name="action" value="unlink_parent_student">
+                                    <input type="hidden" name="link_id" value="<?= (int)$link['id'] ?>">
+                                    <button type="submit">Unlink</button>
+                                </form>
+
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($links)): ?>
+                        <tr><td colspan="6">No parent-child links found matching your search.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div id="form-link-relation" class="collapsible-form">
+        <section class="card">
+            <h3>Link Parent & Student</h3>
+            <form method="post" class="form-grid form-grid-wide">
+                <input type="hidden" name="action" value="link_parent_student">
+
+                <label>Parent</label>
+                <select name="parent_id" required>
+                    <option value="">Select parent</option>
+                    <?php foreach ($parents as $parent): ?>
+                        <option value="<?= (int)$parent['id'] ?>"><?= htmlspecialchars($parent['full_name'] . ' (' . $parent['email'] . ')') ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <label>Student</label>
+                <select name="student_id" required>
+                    <option value="">Select student</option>
+                    <?php foreach ($students as $student): ?>
+                        <option value="<?= (int)$student['id'] ?>"><?= htmlspecialchars($student['full_name'] . ' | ' . $student['admission_no']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <label>Relation</label>
+                <input type="text" name="relation" value="guardian" placeholder="guardian / father / mother">
+
+                <button type="submit">Save Relation</button>
+            </form>
+        </section>
     </div>
-</section>
+
 <?php require __DIR__ . '/../../includes/footer.php'; ?>
