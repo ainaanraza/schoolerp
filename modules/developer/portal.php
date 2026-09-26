@@ -1,3 +1,3 @@
-<?php
-header('Location: /school-erp/developer/login.php');
+﻿<?php
+header('Location: /itierp/developer/login.php');
 exit;

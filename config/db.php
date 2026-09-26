@@ -1,8 +1,10 @@
 <?php
+$isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || ($_SERVER['SERVER_NAME'] ?? '') === 'localhost';
+
 $host = getenv('DB_HOST') ?: 'localhost';
-$dbname = getenv('DB_NAME') ?: 'school_erp';
-$username = getenv('DB_USER') ?: 'root';
-$password = getenv('DB_PASS') ?: '';
+$dbname = getenv('DB_NAME') ?: ($isLocal ? 'school_erp' : 'u971377821_itierp_db');
+$username = getenv('DB_USER') ?: ($isLocal ? 'root' : 'u971377821_itierp_user');
+$password = getenv('DB_PASS') ?: ($isLocal ? '' : 'Itierp000**##');
 
 function ensure_schema_initialized(PDO $pdo): void
 {

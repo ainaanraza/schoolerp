@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_roles([ROLE_PARENT]);
 
@@ -94,19 +94,19 @@ require __DIR__ . '/../includes/header.php';
     </section>
 
     <div class="metrics-grid">
-        <a class="metric-card" href="/school-erp/parent/children.php#section-table">
+        <a class="metric-card" href="/itierp/parent/children.php#section-table">
             <p class="metric-label">Linked Children</p>
             <p class="metric-value"><?= $childrenCount ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/parent/fees.php#section-table">
+        <a class="metric-card" href="/itierp/parent/fees.php#section-table">
             <p class="metric-label">Pending Fees</p>
             <p class="metric-value">₹<?= number_format($pendingFees, 2) ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/parent/attendance.php#section-table">
+        <a class="metric-card" href="/itierp/parent/attendance.php#section-table">
             <p class="metric-label">Absent Alerts Today</p>
             <p class="metric-value"><?= $todayAbsent ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/parent/notifications.php#section-table">
+        <a class="metric-card" href="/itierp/parent/notifications.php#section-table">
             <p class="metric-label">Unread Notifications</p>
             <p class="metric-value"><?= $unreadNotifications ?></p>
         </a>

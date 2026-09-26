@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_STUDENT]);
 
@@ -37,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'uploa
     }
 
     if (empty($errors) && $file !== null) {
-        $maxSize = 5 * 1024 * 1024;
+        $maxSize = 500 * 1024;
         if (($file['size'] ?? 0) > $maxSize) {
-            $errors[] = 'Document file must be 5MB or smaller.';
+            $errors[] = 'Document file must be 500KB or smaller.';
         }
 
         $extension = strtolower(pathinfo((string)($file['name'] ?? ''), PATHINFO_EXTENSION));
@@ -111,6 +111,8 @@ if (
 }
 
 $documents = [];
+$studentsWithDocs = [];
+
 if ($role === ROLE_STUDENT && $studentId > 0) {
     $documentsStatement = $pdo->prepare(
         'SELECT d.id, d.document_type, d.file_path, d.verification_status, d.created_at
@@ -125,16 +127,29 @@ if ($role === ROLE_STUDENT && $studentId > 0) {
 if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN], true)) {
     $documentsStatement = $pdo->query(
         'SELECT d.id, d.document_type, d.file_path, d.verification_status, d.created_at,
-                su.full_name AS student_name, s.admission_no,
+                s.id AS student_id, su.full_name AS student_name, s.admission_no,
                 uu.full_name AS uploaded_by_name
          FROM documents d
          JOIN students s ON s.id = d.student_id
          LEFT JOIN users su ON su.id = s.user_id
          LEFT JOIN users uu ON uu.id = d.uploaded_by
          ORDER BY d.created_at DESC
-         LIMIT 300'
+         LIMIT 1000'
     );
-    $documents = $documentsStatement->fetchAll();
+    $allDocs = $documentsStatement->fetchAll();
+    
+    foreach ($allDocs as $doc) {
+        $sid = $doc['student_id'];
+        if (!isset($studentsWithDocs[$sid])) {
+            $studentsWithDocs[$sid] = [
+                'student_id' => $sid,
+                'student_name' => $doc['student_name'],
+                'admission_no' => $doc['admission_no'],
+                'documents' => []
+            ];
+        }
+        $studentsWithDocs[$sid]['documents'][] = $doc;
+    }
 }
 
 $pageTitle = 'Document Management';
@@ -168,61 +183,112 @@ require __DIR__ . '/../../includes/header.php';
 
     <div class="table-wrap">
         <table>
-            <thead>
-                <tr>
-                    <?php if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN], true)): ?>
+            <?php if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN], true)): ?>
+                <thead>
+                    <tr>
                         <th>Student</th>
                         <th>Admission No</th>
-                        <th>Uploaded By</th>
+                        <th>Documents Count</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($studentsWithDocs as $student): ?>
+                        <tr>
+                            <td><?= htmlspecialchars((string)($student['student_name'] ?: '-')) ?></td>
+                            <td><?= htmlspecialchars((string)($student['admission_no'] ?: '-')) ?></td>
+                            <td><?= count($student['documents']) ?></td>
+                            <td>
+                                <button type="button" class="btn-toggle-form btn-compact" onclick="toggleForm('modal-student-docs-<?= $student['student_id'] ?>', this)">View Documents</button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($studentsWithDocs)): ?>
+                        <tr>
+                            <td colspan="4">No students with documents found.</td>
+                        </tr>
                     <?php endif; ?>
-                    <th>Document Type</th>
-                    <th>Uploaded At</th>
-                    <th>File</th>
-                    <th>Verification</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($documents as $document): ?>
+                </tbody>
+            <?php else: ?>
+                <thead>
                     <tr>
-                        <?php if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN], true)): ?>
-                            <td><?= htmlspecialchars((string)($document['student_name'] ?: '-')) ?></td>
-                            <td><?= htmlspecialchars((string)($document['admission_no'] ?: '-')) ?></td>
-                            <td><?= htmlspecialchars((string)($document['uploaded_by_name'] ?: '-')) ?></td>
-                        <?php endif; ?>
-                        <td><?= htmlspecialchars((string)$document['document_type']) ?></td>
-                        <td><?= htmlspecialchars((string)$document['created_at']) ?></td>
-                        <td>
-                            <a href="/school-erp/<?= htmlspecialchars((string)$document['file_path']) ?>" target="_blank" rel="noopener">View File</a>
-                        </td>
-                        <td>
-                            <?php if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN], true)): ?>
-                                <form method="post" class="inline-form">
-                                    <input type="hidden" name="action" value="update_verification">
-                                    <input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
-                                    <select name="verification_status">
-                                        <option value="pending" <?= $document['verification_status'] === 'pending' ? 'selected' : '' ?>>Pending</option>
-                                        <option value="verified" <?= $document['verification_status'] === 'verified' ? 'selected' : '' ?>>Verified</option>
-                                        <option value="rejected" <?= $document['verification_status'] === 'rejected' ? 'selected' : '' ?>>Rejected</option>
-                                    </select>
-                                    <button type="submit">Update</button>
-                                </form>
-                            <?php else: ?>
+                        <th>Document Type</th>
+                        <th>Uploaded At</th>
+                        <th>File</th>
+                        <th>Verification</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($documents as $document): ?>
+                        <tr>
+                            <td><?= htmlspecialchars((string)$document['document_type']) ?></td>
+                            <td><?= htmlspecialchars((string)$document['created_at']) ?></td>
+                            <td>
+                                <a href="/itierp/<?= htmlspecialchars((string)$document['file_path']) ?>" target="_blank" rel="noopener">View File</a>
+                            </td>
+                            <td>
                                 <span class="pill"><?= htmlspecialchars((string)$document['verification_status']) ?></span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-
-                <?php if (empty($documents)): ?>
-                    <tr>
-                        <td colspan="7">No documents found.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($documents)): ?>
+                        <tr>
+                            <td colspan="4">No documents found.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            <?php endif; ?>
         </table>
     </div>
 
 </section>
+
+<?php if (in_array($role, [ROLE_SUPER_ADMIN, ROLE_ADMIN], true)): ?>
+    <?php foreach ($studentsWithDocs as $student): ?>
+        <div id="modal-student-docs-<?= $student['student_id'] ?>" class="collapsible-form">
+            <section class="card" style="max-width: 900px;">
+                <h3>Documents: <?= htmlspecialchars((string)($student['student_name'] ?: '-')) ?> (<?= htmlspecialchars((string)($student['admission_no'] ?: '-')) ?>)</h3>
+                <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Document Type</th>
+                                <th>Uploaded At</th>
+                                <th>Uploaded By</th>
+                                <th>File</th>
+                                <th>Verification</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($student['documents'] as $document): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars((string)$document['document_type']) ?></td>
+                                    <td><?= htmlspecialchars((string)$document['created_at']) ?></td>
+                                    <td><?= htmlspecialchars((string)($document['uploaded_by_name'] ?: '-')) ?></td>
+                                    <td>
+                                        <a href="/itierp/<?= htmlspecialchars((string)$document['file_path']) ?>" target="_blank" rel="noopener">View File</a>
+                                    </td>
+                                    <td>
+                                        <form method="post" class="inline-form">
+                                            <input type="hidden" name="action" value="update_verification">
+                                            <input type="hidden" name="document_id" value="<?= (int)$document['id'] ?>">
+                                            <select name="verification_status">
+                                                <option value="pending" <?= $document['verification_status'] === 'pending' ? 'selected' : '' ?>>Pending</option>
+                                                <option value="verified" <?= $document['verification_status'] === 'verified' ? 'selected' : '' ?>>Verified</option>
+                                                <option value="rejected" <?= $document['verification_status'] === 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                                            </select>
+                                            <button type="submit">Update</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    <?php endforeach; ?>
+<?php endif; ?>
 
 <?php if ($role === ROLE_STUDENT && $studentId > 0): ?>
     <div id="form-upload-document" class="collapsible-form">

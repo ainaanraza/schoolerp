@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_once __DIR__ . '/../../includes/delete_helpers.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_TEACHER]);
@@ -316,7 +316,7 @@ require __DIR__ . '/../../includes/header.php';
 
     <div class="toolbar-row toolbar-row-end">
         <?php if ($canEditStudents): ?>
-            <a class="nav-item" href="/school-erp/modules/admission/export_students_excel.php">Download Excel</a>
+            <a class="nav-item" href="/itierp/modules/admission/export_students_excel.php">Download Excel</a>
         <?php endif; ?>
     </div>
 
@@ -361,7 +361,7 @@ require __DIR__ . '/../../includes/header.php';
                         <?php if ($canEditStudents): ?>
                             <td>
                                 <div class="student-actions">
-                                    <a class="nav-item student-action-link" href="/school-erp/modules/admission/edit_student.php?id=<?= (int)$student['id'] ?>">Edit</a>
+                                    <a class="nav-item student-action-link" href="/itierp/modules/admission/edit_student.php?id=<?= (int)$student['id'] ?>">Edit</a>
                                     <form method="post" class="inline-form student-action-form">
                                         <input type="hidden" name="action" value="view_credentials">
                                         <input type="hidden" name="student_id" value="<?= (int)$student['id'] ?>">

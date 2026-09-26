@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../config/developer_portal.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -37,7 +37,7 @@ function developer_login(string $username, string $password): bool
 function developer_require_login(): void
 {
     if (!developer_is_logged_in()) {
-        header('Location: /school-erp/developer/login.php');
+        header('Location: /itierp/developer/login.php');
         exit;
     }
 }

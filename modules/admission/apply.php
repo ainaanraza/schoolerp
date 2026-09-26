@@ -7,7 +7,7 @@ $success = null;
 // Public link for sharing
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
-$admissionFormLink = $scheme . '://' . $host . '/school-erp/modules/admission/apply.php';
+$admissionFormLink = $scheme . '://' . $host . '/itierp/modules/admission/apply.php';
 
 function ensure_lead_profile_columns(PDO $pdo): void
 {
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
             $filename = 'lead_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
             if (move_uploaded_file($_FILES['photo']['tmp_name'], $uploadDir . $filename)) {
-                $photoPath = '/school-erp/uploads/photos/' . $filename;
+                $photoPath = '/itierp/uploads/photos/' . $filename;
             } else {
                 $errors[] = 'Failed to save uploaded photo.';
             }
@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ext = str_contains($parts[0], 'png') ? 'png' : 'jpg';
                     $filename = 'lead_cam_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
                     if (file_put_contents($uploadDir . $filename, $decoded)) {
-                        $photoPath = '/school-erp/uploads/photos/' . $filename;
+                        $photoPath = '/itierp/uploads/photos/' . $filename;
                     }
                 }
             }
@@ -245,10 +245,10 @@ require __DIR__ . '/../../includes/header.php';
                 <span id="previewPlaceholder">No photo selected</span>
             </div>
             <div class="photo-actions">
-                <label class="photo-btn" for="photoFileInput">📁 Upload</label>
+                <label class="photo-btn" for="photoFileInput">&#128194; Upload</label>
                 <input type="file" id="photoFileInput" name="photo" accept="image/jpeg,image/png,image/webp" class="is-hidden">
-                <button type="button" class="photo-btn" id="cameraBtn">📷 Camera</button>
-                <button type="button" class="photo-btn photo-btn-danger is-hidden" id="clearPhotoBtn">✕ Clear</button>
+                <button type="button" class="photo-btn" id="cameraBtn">&#128247; Camera</button>
+                <button type="button" class="photo-btn photo-btn-danger is-hidden" id="clearPhotoBtn">&#10006; Clear</button>
             </div>
             <input type="hidden" name="camera_photo" id="cameraPhotoData" value="">
         </div>
@@ -259,7 +259,7 @@ require __DIR__ . '/../../includes/header.php';
                 <video id="cameraFeed" autoplay playsinline></video>
                 <canvas id="cameraCanvas" class="is-hidden"></canvas>
                 <div class="camera-modal-actions">
-                    <button type="button" id="captureBtn" class="photo-btn">📸 Capture</button>
+                    <button type="button" id="captureBtn" class="photo-btn">&#128248; Capture</button>
                     <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
 if (is_logged_in()) {
@@ -30,7 +30,7 @@ require __DIR__ . '/includes/header.php';
 <section class="card">
     <div class="login-brand-block">
         <div class="login-brand-mark" aria-hidden="true">
-            <img src="/school-erp/assets/images/unityiti_logo.jpeg" alt="" class="login-brand-logo">
+            <img src="/itierp/assets/images/unityiti_logo.jpeg" alt="" class="login-brand-logo">
         </div>
         <p class="login-overline">Unity ITI ERP SUITE</p>
         <h2>Sign in to your workspace</h2>

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_TEACHER, ROLE_STUDENT, ROLE_PARENT]);
 
@@ -477,7 +477,7 @@ require __DIR__ . '/../../includes/header.php';
                                         <input type="file" name="submission_file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
 
                                         <?php if (!empty($row['submission_file'])): ?>
-                                            <a href="/school-erp/<?= htmlspecialchars((string)$row['submission_file']) ?>" target="_blank" rel="noopener">View current file</a>
+                                            <a href="/itierp/<?= htmlspecialchars((string)$row['submission_file']) ?>" target="_blank" rel="noopener">View current file</a>
                                         <?php endif; ?>
 
                                         <button type="submit">Submit</button>

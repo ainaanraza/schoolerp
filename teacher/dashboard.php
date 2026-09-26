@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_roles([ROLE_TEACHER]);
 
@@ -66,23 +66,23 @@ require __DIR__ . '/../includes/header.php';
     </section>
 
     <div class="metrics-grid">
-        <a class="metric-card" href="/school-erp/modules/admission/students.php#section-table">
+        <a class="metric-card" href="/itierp/modules/admission/students.php#section-table">
             <p class="metric-label">Assigned Courses</p>
             <p class="metric-value"><?= $assignedCourses ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/admission/students.php#section-table">
+        <a class="metric-card" href="/itierp/modules/admission/students.php#section-table">
             <p class="metric-label">Assigned Students</p>
             <p class="metric-value"><?= $assignedStudents ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/attendance/mark.php#section-table">
+        <a class="metric-card" href="/itierp/modules/attendance/mark.php#section-table">
             <p class="metric-label">Attendance Marked Today</p>
             <p class="metric-value"><?= $attendanceMarkedToday ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/academics/homework.php#section-table">
+        <a class="metric-card" href="/itierp/modules/academics/homework.php#section-table">
             <p class="metric-label">Homework Posted</p>
             <p class="metric-value"><?= $homeworkCount ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/notification/send.php#section-table">
+        <a class="metric-card" href="/itierp/modules/notification/send.php#section-table">
             <p class="metric-label">Notifications Sent</p>
             <p class="metric-value"><?= $notificationCount ?></p>
         </a>

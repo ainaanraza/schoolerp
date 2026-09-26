@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_roles([ROLE_STUDENT]);
 
@@ -103,11 +103,11 @@ require __DIR__ . '/../includes/header.php';
     <section class="card">
         <h3>Attendance Overview</h3>
         <div class="metrics-grid metrics-grid-tight">
-            <a class="metric-card" href="/school-erp/modules/attendance/view.php#section-table">
+            <a class="metric-card" href="/itierp/modules/attendance/view.php#section-table">
                 <p class="metric-label">Attendance %</p>
                 <p class="metric-value"><?= number_format($attendancePercent, 1) ?>%</p>
             </a>
-            <a class="metric-card" href="/school-erp/modules/attendance/view.php#section-table">
+            <a class="metric-card" href="/itierp/modules/attendance/view.php#section-table">
                 <p class="metric-label">Attendance Records</p>
                 <p class="metric-value"><?= $attendanceTotal ?></p>
             </a>
@@ -115,15 +115,15 @@ require __DIR__ . '/../includes/header.php';
     </section>
 
     <div class="metrics-grid">
-        <a class="metric-card" href="/school-erp/modules/fees/student_fees.php#section-table">
+        <a class="metric-card" href="/itierp/modules/fees/student_fees.php#section-table">
             <p class="metric-label">Pending Fees</p>
             <p class="metric-value">₹<?= number_format($pendingFees, 2) ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/academics/homework.php#section-table">
+        <a class="metric-card" href="/itierp/modules/academics/homework.php#section-table">
             <p class="metric-label">Homework Items</p>
             <p class="metric-value"><?= $homeworkCount ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/notification/inbox.php#section-table">
+        <a class="metric-card" href="/itierp/modules/notification/inbox.php#section-table">
             <p class="metric-label">Unread Notifications</p>
             <p class="metric-value"><?= $unreadNotifications ?></p>
         </a>

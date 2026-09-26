@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN]);
 
@@ -68,47 +68,47 @@ require __DIR__ . '/../includes/header.php';
     </section>
 
     <div class="metrics-grid">
-        <a class="metric-card" href="/school-erp/modules/admission/admin_management.php#section-table">
+        <a class="metric-card" href="/itierp/modules/admission/admin_management.php#section-table">
             <p class="metric-label">Active Admins</p>
             <p class="metric-value"><?= (int)$userSummary['admins'] ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/admission/admin_management.php#section-table">
+        <a class="metric-card" href="/itierp/modules/admission/admin_management.php#section-table">
             <p class="metric-label">Active Teachers</p>
             <p class="metric-value"><?= (int)$userSummary['teachers'] ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/admission/students.php#section-table">
+        <a class="metric-card" href="/itierp/modules/admission/students.php#section-table">
             <p class="metric-label">Active Students</p>
             <p class="metric-value"><?= (int)$userSummary['students'] ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/admission/parent_linking.php#section-table">
+        <a class="metric-card" href="/itierp/modules/admission/parent_linking.php#section-table">
             <p class="metric-label">Active Parents</p>
             <p class="metric-value"><?= (int)$userSummary['parents'] ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/admission/leads.php#section-table">
+        <a class="metric-card" href="/itierp/modules/admission/leads.php#section-table">
             <p class="metric-label">Open Leads</p>
             <p class="metric-value"><?= (int)$leadSummary['open_leads'] ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/admission/leads.php#section-table">
+        <a class="metric-card" href="/itierp/modules/admission/leads.php#section-table">
             <p class="metric-label">Lead Enrolled</p>
             <p class="metric-value"><?= (int)$leadSummary['enrolled'] ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/fees/superadmin_finance.php#section-table">
+        <a class="metric-card" href="/itierp/modules/fees/superadmin_finance.php#section-table">
             <p class="metric-label">Fee Pending</p>
             <p class="metric-value">₹<?= number_format((float)$financeSummary['pending'], 2) ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/attendance/manage.php#section-table">
+        <a class="metric-card" href="/itierp/modules/attendance/manage.php#section-table">
             <p class="metric-label">Attendance Today</p>
             <p class="metric-value"><?= (int)$todayAttendance ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/inventory/items.php#section-table">
+        <a class="metric-card" href="/itierp/modules/inventory/items.php#section-table">
             <p class="metric-label">Inventory Items</p>
             <p class="metric-value"><?= (int)$inventorySummary['total_items'] ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/inventory/items.php#section-table">
+        <a class="metric-card" href="/itierp/modules/inventory/items.php#section-table">
             <p class="metric-label">Inventory Units</p>
             <p class="metric-value"><?= (int)$inventorySummary['total_units'] ?></p>
         </a>
-        <a class="metric-card" href="/school-erp/modules/inventory/items.php#section-table">
+        <a class="metric-card" href="/itierp/modules/inventory/items.php#section-table">
             <p class="metric-label">Inventory Value</p>
             <p class="metric-value">₹<?= number_format((float)$inventorySummary['stock_value'], 2) ?></p>
         </a>

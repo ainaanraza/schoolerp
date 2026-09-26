@@ -43,14 +43,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($action === 'unlink_parent_student') {
-        $linkId = (int)($_POST['link_id'] ?? 0);
-        if ($linkId <= 0) {
-            $errors[] = 'Invalid unlink request.';
+    if ($action === 'withdraw_student') {
+        $studentId = (int)($_POST['student_id'] ?? 0);
+        if ($studentId <= 0) {
+            $errors[] = 'Invalid withdraw request.';
         } else {
-            $deleteStmt = $pdo->prepare('DELETE FROM parent_student WHERE id = :id');
-            $deleteStmt->execute(['id' => $linkId]);
-            $success[] = 'Parent-child relation removed.';
+            try {
+                $pdo->beginTransaction();
+                
+                // Remove student from currently enrolled classes
+                $deactivateStmt = $pdo->prepare('UPDATE student_class_enrollments SET is_active = 0 WHERE student_id = :student_id AND is_active = 1');
+                $deactivateStmt->execute(['student_id' => $studentId]);
+                
+                // Update student status to inactive
+                $statusStmt = $pdo->prepare('UPDATE students SET status = "inactive" WHERE id = :id');
+                $statusStmt->execute(['id' => $studentId]);
+                
+                $pdo->commit();
+                $success[] = 'Student successfully withdrawn from current courses. Record has been kept.';
+            } catch (Throwable $throwable) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $errors[] = 'Unable to withdraw student: ' . $throwable->getMessage();
+            }
+        }
+    }
+
+    if ($action === 'restore_student') {
+        $studentId = (int)($_POST['student_id'] ?? 0);
+        if ($studentId <= 0) {
+            $errors[] = 'Invalid restore request.';
+        } else {
+            try {
+                $pdo->beginTransaction();
+                
+                // Update student status to enrolled
+                $statusStmt = $pdo->prepare('UPDATE students SET status = "enrolled" WHERE id = :id');
+                $statusStmt->execute(['id' => $studentId]);
+                
+                // Reactivate their most recent class enrollment
+                $reactivateStmt = $pdo->prepare('UPDATE student_class_enrollments SET is_active = 1 WHERE student_id = :student_id ORDER BY id DESC LIMIT 1');
+                $reactivateStmt->execute(['student_id' => $studentId]);
+                
+                $pdo->commit();
+                $success[] = 'Student admission restored successfully.';
+            } catch (Throwable $throwable) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $errors[] = 'Unable to restore student: ' . $throwable->getMessage();
+            }
         }
     }
 
@@ -94,7 +137,7 @@ $sql =
             pu.full_name AS parent_name, pu.email AS parent_email,
             p.id AS parent_id,
             su.full_name AS student_name, su.email AS student_email,
-            s.admission_no
+            s.admission_no, s.id AS student_id, s.status AS student_status
      FROM parent_student ps
      JOIN parents p ON p.id = ps.parent_id
      JOIN users pu ON pu.id = p.user_id
@@ -172,11 +215,19 @@ require __DIR__ . '/../../includes/header.php';
                             <td><?= htmlspecialchars((string)$link['relation']) ?></td>
                             <td><?= htmlspecialchars((string)$link['created_at']) ?></td>
                             <td>
-                                <form method="post" class="inline-form" onsubmit="return confirm('Remove this relation?');">
-                                    <input type="hidden" name="action" value="unlink_parent_student">
-                                    <input type="hidden" name="link_id" value="<?= (int)$link['id'] ?>">
-                                    <button type="submit">Unlink</button>
-                                </form>
+                                <?php if ($link['student_status'] === 'inactive'): ?>
+                                    <form method="post" class="inline-form" onsubmit="return confirm('Restore student admission to their last class?');">
+                                        <input type="hidden" name="action" value="restore_student">
+                                        <input type="hidden" name="student_id" value="<?= (int)$link['student_id'] ?>">
+                                        <button type="submit" style="background: white; color: var(--secondary); border: 1px solid var(--secondary);">Restore</button>
+                                    </form>
+                                <?php else: ?>
+                                    <form method="post" class="inline-form" onsubmit="return confirm('Withdraw student from all active classes? The student record will be kept.');">
+                                        <input type="hidden" name="action" value="withdraw_student">
+                                        <input type="hidden" name="student_id" value="<?= (int)$link['student_id'] ?>">
+                                        <button type="submit">Withdraw</button>
+                                    </form>
+                                <?php endif; ?>
 
                             </td>
                         </tr>

@@ -87,89 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'is_active' => 1,
                         'created_by' => current_user()['id'],
                     ]);
-                    $success[] = 'Fee structure created successfully.';
-                }
-            }
-        }
-    }
-
-    if ($action === 'generate_fees') {
-        $feeStructureId = (int)($_POST['fee_structure_id'] ?? 0);
-        $periodLabel = trim($_POST['period_label'] ?? '');
-        $dueDateRaw = trim($_POST['due_date'] ?? '');
-        $dueDate = $dueDateRaw !== '' ? $dueDateRaw : null;
-
-        if ($feeStructureId <= 0 || $periodLabel === '') {
-            $errors[] = 'Fee structure and period label are required for generation.';
-        } else {
-            $structureStatement = $pdo->prepare(
-                'SELECT id, class_id, session_id, fee_type, amount, is_active
-                 FROM fee_structures
-                 WHERE id = :id
-                 LIMIT 1'
-            );
-            $structureStatement->execute(['id' => $feeStructureId]);
-            $structure = $structureStatement->fetch();
-
-            if (!$structure || (int)$structure['is_active'] !== 1) {
-                $errors[] = 'Fee structure not found or inactive.';
-            } else {
-                $studentsStatement = $pdo->prepare(
-                    'SELECT s.id
-                     FROM student_class_enrollments sce
-                     JOIN students s ON s.id = sce.student_id
-                     WHERE sce.class_id = :class_id
-                       AND sce.session_id = :session_id
-                       AND sce.is_active = 1
-                       AND s.status = :student_status'
-                );
-                $studentsStatement->execute([
-                    'class_id' => $structure['class_id'],
-                    'session_id' => $structure['session_id'],
-                    'student_status' => 'enrolled',
-                ]);
-                $students = $studentsStatement->fetchAll();
-
-                if (empty($students)) {
-                    $errors[] = 'No active enrolled students found in this course/session.';
-                } else {
-                    $insertFee = $pdo->prepare(
-                        'INSERT INTO student_fees (student_id, fee_structure_id, period_label, total_amount, discount_amount, payable_amount, paid_amount, status, due_date)
-                         VALUES (:student_id, :fee_structure_id, :period_label, :total_amount, :discount_amount, :payable_amount, :paid_amount, :status, :due_date)'
-                    );
-                    $existsFee = $pdo->prepare(
-                        'SELECT id FROM student_fees WHERE student_id = :student_id AND fee_structure_id = :fee_structure_id AND period_label = :period_label LIMIT 1'
-                    );
-
-                    $createdCount = 0;
-                    $skippedCount = 0;
-                    foreach ($students as $student) {
-                        $existsFee->execute([
-                            'student_id' => $student['id'],
-                            'fee_structure_id' => $feeStructureId,
-                            'period_label' => $periodLabel,
-                        ]);
-
-                        if ($existsFee->fetch()) {
-                            $skippedCount++;
-                            continue;
-                        }
-
-                        $insertFee->execute([
-                            'student_id' => $student['id'],
-                            'fee_structure_id' => $feeStructureId,
-                            'period_label' => $periodLabel,
-                            'total_amount' => $structure['amount'],
-                            'discount_amount' => 0,
-                            'payable_amount' => $structure['amount'],
-                            'paid_amount' => 0,
-                            'status' => 'pending',
-                            'due_date' => $dueDate,
-                        ]);
-                        $createdCount++;
-                    }
-
-                    $success[] = "Fee generation complete. Created: {$createdCount}, Skipped existing: {$skippedCount}.";
+                    $newFeeStructureId = (int)$pdo->lastInsertId();
+                    $generatedCount = auto_generate_upfront_fees($pdo, $newFeeStructureId);
+                    $success[] = 'Fee structure created successfully. Generated ' . $generatedCount . ' initial fee records.';
                 }
             }
         }
@@ -196,14 +116,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $structuresStatement = $pdo->query(
-    'SELECT fs.id, fs.fee_type, fs.fee_title, fs.amount, fs.billing_cycle, fs.due_day, fs.is_active, fs.created_at,
+    'SELECT fs.id, fs.class_id, fs.fee_type, fs.fee_title, fs.amount, fs.billing_cycle, fs.due_day, fs.is_active, fs.created_at,
             c.class_name, c.section, a.title AS session_title
      FROM fee_structures fs
      JOIN classes c ON c.id = fs.class_id
      JOIN academic_sessions a ON a.id = fs.session_id
-     ORDER BY fs.id DESC'
+     ORDER BY c.class_name, c.section, fs.id DESC'
 );
 $structures = $structuresStatement->fetchAll();
+
+$coursesWithFees = [];
+foreach ($structures as $structure) {
+    $cid = $structure['class_id'];
+    if (!isset($coursesWithFees[$cid])) {
+        $coursesWithFees[$cid] = [
+            'class_id' => $cid,
+            'class_name' => $structure['class_name'],
+            'session_title' => $structure['session_title'],
+            'structures' => []
+        ];
+    }
+    $coursesWithFees[$cid]['structures'][] = $structure;
+}
 
 $pageTitle = 'Fee Structure';
 require __DIR__ . '/../../includes/header.php';
@@ -233,47 +167,82 @@ require __DIR__ . '/../../includes/header.php';
             <h3>Existing Fee Structures</h3>
             <div class="screen-toolbar-actions">
                 <button type="button" class="btn-toggle-form" onclick="toggleForm('form-create-structure', this)">+ Create Structure</button>
-                <button type="button" class="btn-toggle-form" onclick="toggleForm('form-generate-fees', this)">Generate Fees</button>
             </div>
         </div>
         <div class="table-wrap">
             <table class="compact-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Type</th>
-                        <th>Title</th>
                         <th>Course</th>
                         <th>Session</th>
-                        <th>Cycle</th>
-                        <th>Amount</th>
-                        <th>Due Day</th>
-                        <th>Status</th>
+                        <th>Structures Count</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($structures as $structure): ?>
+                    <?php foreach ($coursesWithFees as $course): ?>
                         <tr>
-                            <td><?= (int)$structure['id'] ?></td>
-                            <td><?= htmlspecialchars(fee_type_label((string)$structure['fee_type'])) ?></td>
-                            <td><?= htmlspecialchars($structure['fee_title']) ?></td>
-                            <td><?= htmlspecialchars($structure['class_name']) ?></td>
-                            <td><?= htmlspecialchars($structure['session_title']) ?></td>
-                            <td><?= htmlspecialchars($structure['billing_cycle']) ?></td>
-                            <td><?= number_format((float)$structure['amount'], 2) ?></td>
-                            <td><?= htmlspecialchars((string)($structure['due_day'] ?? '-')) ?></td>
-                            <td><span class="pill"><?= (int)$structure['is_active'] === 1 ? 'active' : 'inactive' ?></span></td>
+                            <td><?= htmlspecialchars($course['class_name']) ?></td>
+                            <td><?= htmlspecialchars($course['session_title']) ?></td>
+                            <td><?= count($course['structures']) ?></td>
+                            <td>
+                                <button type="button" class="btn-toggle-form btn-compact" onclick="toggleForm('modal-course-fees-<?= (int)$course['class_id'] ?>', this)">View Structures</button>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (empty($structures)): ?>
+                    <?php if (empty($coursesWithFees)): ?>
                         <tr>
-                             <td colspan="9">No fee structures created yet.</td>
+                             <td colspan="4">No fee structures created yet.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </section>
+
+    <?php foreach ($coursesWithFees as $course): ?>
+        <div id="modal-course-fees-<?= (int)$course['class_id'] ?>" class="collapsible-form">
+            <section class="card" style="max-width: 900px;">
+                <h3>Fee Structures: <?= htmlspecialchars($course['class_name'] . ' (' . $course['session_title'] . ')') ?></h3>
+                <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
+                    <table class="compact-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Title</th>
+                                <th>Cycle</th>
+                                <th>Amount</th>
+                                <th>Due Day</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($course['structures'] as $structure): ?>
+                                <tr>
+                                    <td><?= (int)$structure['id'] ?></td>
+                                    <td><?= htmlspecialchars(fee_type_label((string)$structure['fee_type'])) ?></td>
+                                    <td><?= htmlspecialchars($structure['fee_title']) ?></td>
+                                    <td><?= htmlspecialchars($structure['billing_cycle']) ?></td>
+                                    <td><?= number_format((float)$structure['amount'], 2) ?></td>
+                                    <td><?= htmlspecialchars((string)($structure['due_day'] ?? '-')) ?></td>
+                                    <td><span class="pill"><?= (int)$structure['is_active'] === 1 ? 'active' : 'inactive' ?></span></td>
+                                    <td>
+                                        <form method="post" class="inline-form" onsubmit="return confirm('Delete this structure and all its student fees?');">
+                                            <input type="hidden" name="action" value="delete_structure">
+                                            <input type="hidden" name="fee_structure_id" value="<?= (int)$structure['id'] ?>">
+                                            <button type="submit" class="danger btn-compact" style="padding:0.2rem 0.5rem; width: auto;">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    <?php endforeach; ?>
 
 </section>
 
@@ -324,32 +293,6 @@ require __DIR__ . '/../../includes/header.php';
         </section>
     </div>
 
-    <div id="form-generate-fees" class="collapsible-form">
-        <section class="card">
-            <h3>Generate Fees for Period</h3>
-            <form method="post" class="form-grid form-grid-wide">
-                <input type="hidden" name="action" value="generate_fees">
-
-                <label>Fee Structure</label>
-                <select name="fee_structure_id" required>
-                    <option value="">Select structure</option>
-                    <?php foreach ($structures as $structure): ?>
-                        <option value="<?= (int)$structure['id'] ?>">
-                            <?= htmlspecialchars(fee_type_label((string)$structure['fee_type']) . ' | ' . $structure['fee_title'] . ' | ' . $structure['class_name'] . ' | ' . $structure['billing_cycle']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-
-                <label>Period Label</label>
-                <input type="text" name="period_label" placeholder="Apr-2026" required>
-
-                <label>Due Date (optional)</label>
-                <input type="date" name="due_date">
-
-                <button type="submit">Generate Student Fees</button>
-            </form>
-        </section>
-    </div>
 <?php else: ?>
     <section class="card">
         <p>No courses found. Create courses in Course Setup before configuring fee structures.</p>

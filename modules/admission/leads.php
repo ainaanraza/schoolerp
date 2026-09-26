@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_once __DIR__ . '/../../includes/delete_helpers.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN]);
@@ -157,19 +157,6 @@ function resolve_class_for_lead(PDO $pdo, array $lead): ?array
     return $row ?: null;
 }
 
-function period_label_for_cycle(string $billingCycle): string
-{
-    $month = (int)date('n');
-    $year = date('Y');
-
-    return match ($billingCycle) {
-        'monthly' => date('M-Y'),
-        'quarterly' => 'Q' . (int)ceil($month / 3) . '-' . $year,
-        'half_yearly' => ($month <= 6 ? 'H1-' : 'H2-') . $year,
-        'yearly' => $year,
-        default => 'Admission-' . $year,
-    };
-}
 
 function fee_status_for_amount(float $payableAmount, float $paidAmount): string
 {
@@ -259,11 +246,11 @@ function notify_superadmin_of_concession(PDO $pdo, array $lead, string $classLab
     }
 
     $title = 'Admission concession recorded';
-    $message = 'Admission concession of ₹' . number_format($concessionAmount, 2) . ' was set for lead #' . (int)$lead['id'] . ' - ' . (string)$lead['lead_name'] . ' (' . $classLabel . ').';
+    $message = "Admission concession of ₹" . number_format($concessionAmount, 2) . "\n" .
+               (string)$lead['lead_name'] . " - " . $classLabel . ".\n";
     if ($concessionNote !== '') {
-        $message .= ' Reason: ' . $concessionNote . '.';
+        $message .= "Reason: " . $concessionNote . ".";
     }
-    $message .= ' Review any additional discount from superadmin finance.';
 
     $insertNotification = $pdo->prepare(
         'INSERT INTO notifications (title, message, sender_id, target_scope, target_value)
@@ -313,43 +300,45 @@ function ensure_student_fees_for_class(PDO $pdo, int $studentId, int $classId, i
 
     $studentFees = [];
     foreach ($structures as $structure) {
-        $periodLabel = period_label_for_cycle((string)$structure['billing_cycle']);
-
-        $selectStudentFee->execute([
-            'student_id' => $studentId,
-            'fee_structure_id' => (int)$structure['id'],
-            'period_label' => $periodLabel,
-        ]);
-        $existing = $selectStudentFee->fetch();
-
-        if ($existing) {
-            $studentFees[] = [
-                'id' => (int)$existing['id'],
-                'fee_type' => (string)$structure['fee_type'],
-                'payable_amount' => (float)$existing['payable_amount'],
-                'paid_amount' => (float)$existing['paid_amount'],
-            ];
-            continue;
-        }
-
         $amount = (float)$structure['amount'];
-        $insertStudentFee->execute([
-            'student_id' => $studentId,
-            'fee_structure_id' => (int)$structure['id'],
-            'period_label' => $periodLabel,
-            'total_amount' => $amount,
-            'discount_amount' => 0,
-            'payable_amount' => $amount,
-            'paid_amount' => 0,
-            'status' => 'pending',
-            'due_date' => date('Y-m-d'),
-        ]);
-        $studentFees[] = [
-            'id' => (int)$pdo->lastInsertId(),
-            'fee_type' => (string)$structure['fee_type'],
-            'payable_amount' => $amount,
-            'paid_amount' => 0,
-        ];
+        $periods = get_upfront_periods_for_cycle((string)$structure['billing_cycle']);
+        
+        foreach ($periods as $periodLabel) {
+            $selectStudentFee->execute([
+                'student_id' => $studentId,
+                'fee_structure_id' => (int)$structure['id'],
+                'period_label' => $periodLabel,
+            ]);
+            $existing = $selectStudentFee->fetch();
+
+            if ($existing) {
+                $studentFees[] = [
+                    'id' => (int)$existing['id'],
+                    'fee_type' => (string)$structure['fee_type'],
+                    'payable_amount' => (float)$existing['payable_amount'],
+                    'paid_amount' => (float)$existing['paid_amount'],
+                ];
+                continue;
+            }
+
+            $insertStudentFee->execute([
+                'student_id' => $studentId,
+                'fee_structure_id' => (int)$structure['id'],
+                'period_label' => $periodLabel,
+                'total_amount' => $amount,
+                'discount_amount' => 0,
+                'payable_amount' => $amount,
+                'paid_amount' => 0,
+                'status' => 'pending',
+                'due_date' => null,
+            ]);
+            $studentFees[] = [
+                'id' => (int)$pdo->lastInsertId(),
+                'fee_type' => (string)$structure['fee_type'],
+                'payable_amount' => $amount,
+                'paid_amount' => 0,
+            ];
+        }
     }
 
     return $studentFees;
@@ -878,7 +867,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'parent_password' => $parentPassword,
                 ];
 
-                header('Location: /school-erp/modules/admission/leads.php?enrolled=1');
+                header('Location: /itierp/modules/admission/leads.php?enrolled=1');
                 exit;
             } catch (Throwable $throwable) {
                 if ($pdo->inTransaction()) {
@@ -1031,7 +1020,7 @@ require __DIR__ . '/../../includes/header.php';
                                 <button type="submit">Save Fee</button>
                             </form>
 
-                            <a class="nav-item nav-item-subtle lead-action-link" href="/school-erp/modules/admission/edit_lead.php?id=<?= (int)$lead['id'] ?>">Edit</a>
+                            <a class="nav-item nav-item-subtle lead-action-link" href="/itierp/modules/admission/edit_lead.php?id=<?= (int)$lead['id'] ?>">Edit</a>
 
                             <?php if (!in_array($lead['status'], ['enrolled', 'rejected'], true)): ?>
                                 <?php if ($isFeeReadyForApproval): ?>

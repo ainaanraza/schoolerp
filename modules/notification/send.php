@@ -80,48 +80,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
     $title = trim($_POST['title'] ?? '');
     $message = trim($_POST['message'] ?? '');
-    $targetScope = $_POST['target_scope'] ?? '';
-    $targetValue = trim($_POST['target_value'] ?? '');
+    $targetScopes = $_POST['target_scope'] ?? [];
+    $targetValues = $_POST['target_value'] ?? [];
+    
+    if (!is_array($targetScopes)) $targetScopes = [$targetScopes];
+    if (!is_array($targetValues)) $targetValues = [$targetValues];
 
     $allowedScopes = $allowedScopesByRole[$role] ?? [];
+    $validTargets = [];
 
     if ($title === '' || $message === '') {
         $errors[] = 'Title and message are required.';
     }
 
-    if (!in_array($targetScope, $allowedScopes, true)) {
-        $errors[] = 'Selected target scope is not allowed for your role.';
-    }
-
-    if ($targetScope === 'role' && !in_array($targetValue, $allowedRoleTargets, true)) {
-        $errors[] = 'Invalid role target.';
-    }
-
-    if ($targetScope === 'class') {
-        $classId = (int)$targetValue;
-        if ($classId <= 0) {
-            $errors[] = 'Course target is required.';
+    if (in_array('all', $targetScopes, true)) {
+        if (!in_array('all', $allowedScopes, true)) {
+            $errors[] = 'Selected target scope is not allowed for your role.';
         } else {
-            $classIds = array_map(static fn(array $row): int => (int)$row['id'], $allClasses);
-            if (!in_array($classId, $classIds, true)) {
-                $errors[] = 'Selected course does not exist.';
-            }
-            if ($role === ROLE_TEACHER && !in_array($classId, $teacherClassIds, true)) {
-                $errors[] = 'Teachers can only notify their assigned courses.';
-            }
+            $validTargets[] = ['scope' => 'all', 'value' => null];
         }
-    }
-
-    if ($targetScope === 'user') {
-        $targetUserId = (int)$targetValue;
-        if ($targetUserId <= 0) {
-            $errors[] = 'User target is required.';
-        } else {
-            $userCheck = $pdo->prepare('SELECT id FROM users WHERE id = :id LIMIT 1');
-            $userCheck->execute(['id' => $targetUserId]);
-            if (!$userCheck->fetch()) {
-                $errors[] = 'Target user not found.';
+    } else {
+        foreach ($targetValues as $val) {
+            $parts = explode('_', $val, 2);
+            if (count($parts) !== 2) {
+                $errors[] = 'Invalid target value format.';
+                continue;
             }
+            $scope = $parts[0];
+            $value = $parts[1];
+
+            if (!in_array($scope, $targetScopes, true) || !in_array($scope, $allowedScopes, true)) {
+                $errors[] = "Target scope '$scope' is not allowed.";
+                continue;
+            }
+
+            if ($scope === 'role' && !in_array($value, $allowedRoleTargets, true)) {
+                $errors[] = 'Invalid role target.';
+            }
+
+            if ($scope === 'class') {
+                $classId = (int)$value;
+                $classIds = array_map(static fn(array $row): int => (int)$row['id'], $allClasses);
+                if (!in_array($classId, $classIds, true)) {
+                    $errors[] = 'Selected course does not exist.';
+                }
+                if ($role === ROLE_TEACHER && !in_array($classId, $teacherClassIds, true)) {
+                    $errors[] = 'Teachers can only notify their assigned courses.';
+                }
+            }
+
+            if ($scope === 'user') {
+                $targetUserId = (int)$value;
+                $userCheck = $pdo->prepare('SELECT id FROM users WHERE id = :id LIMIT 1');
+                $userCheck->execute(['id' => $targetUserId]);
+                if (!$userCheck->fetch()) {
+                    $errors[] = 'Target user not found.';
+                }
+            }
+            
+            $validTargets[] = ['scope' => $scope, 'value' => $value];
+        }
+        
+        if (empty($validTargets) && empty($errors)) {
+            $errors[] = 'Please select at least one target.';
         }
     }
 
@@ -130,13 +151,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'INSERT INTO notifications (title, message, sender_id, target_scope, target_value)
              VALUES (:title, :message, :sender_id, :target_scope, :target_value)'
         );
-        $insert->execute([
-            'title' => $title,
-            'message' => $message,
-            'sender_id' => current_user()['id'],
-            'target_scope' => $targetScope,
-            'target_value' => $targetValue !== '' ? $targetValue : null,
-        ]);
+        foreach ($validTargets as $t) {
+            $insert->execute([
+                'title' => $title,
+                'message' => $message,
+                'sender_id' => current_user()['id'],
+                'target_scope' => $t['scope'],
+                'target_value' => $t['value'],
+            ]);
+        }
         $success[] = 'Notification sent successfully.';
     }
     }
@@ -223,36 +246,140 @@ require __DIR__ . '/../../includes/header.php';
                 <textarea name="message" rows="4" required></textarea>
 
                 <label>Target Scope</label>
-                <select name="target_scope" id="targetScopeSelect" required>
-                    <?php foreach ($allowedScopesByRole[$role] as $scope): ?>
-                        <option value="<?= htmlspecialchars($scope) ?>"><?= htmlspecialchars($scope === 'class' ? 'COURSE' : strtoupper($scope)) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <div class="multi-select-widget" id="scopeWidget">
+                    <div class="multi-select-button" onclick="toggleMultiSelect('scopeDropdown', this)">
+                        <span class="multi-select-button-text">Select Scope...</span>
+                        <i class="chevron">▼</i>
+                    </div>
+                    <div class="multi-select-dropdown" id="scopeDropdown">
+                        <?php foreach ($allowedScopesByRole[$role] as $scope): ?>
+                            <label class="multi-select-option">
+                                <input type="checkbox" name="target_scope[]" value="<?= htmlspecialchars($scope) ?>" onchange="updateMultiSelectText('scopeWidget', 'Select Scope...'); updateTargetDropdown();">
+                                <?= htmlspecialchars($scope === 'class' ? 'COURSE' : strtoupper($scope)) ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
 
-                <label>Target Value</label>
-                <select name="target_value" id="targetValueSelect">
-                    <option value="">Select target</option>
-                    <?php if ($role === ROLE_TEACHER): ?>
-                        <?php foreach ($allClasses as $class): ?>
-                            <?php if (in_array((int)$class['id'], $teacherClassIds, true)): ?>
-                                <option value="<?= (int)$class['id'] ?>">Course: <?= htmlspecialchars($class['class_name']) ?></option>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <?php foreach ($allowedRoleTargets as $roleTarget): ?>
-                            <option value="<?= htmlspecialchars($roleTarget) ?>">Role: <?= htmlspecialchars($roleTarget) ?></option>
-                        <?php endforeach; ?>
-                        <?php foreach ($allClasses as $class): ?>
-                            <option value="<?= (int)$class['id'] ?>">Course: <?= htmlspecialchars($class['class_name']) ?></option>
-                        <?php endforeach; ?>
-                        <?php foreach ($userTargets as $targetUser): ?>
-                            <option value="<?= (int)$targetUser['id'] ?>">User: <?= htmlspecialchars($targetUser['full_name'] . ' [' . $targetUser['role'] . ']') ?></option>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </select>
+                <label id="targetValueLabel">Target Value</label>
+                <div class="multi-select-widget" id="targetWidget">
+                    <div class="multi-select-button" onclick="toggleMultiSelect('targetDropdown', this)">
+                        <span class="multi-select-button-text">Select Target...</span>
+                        <i class="chevron">▼</i>
+                    </div>
+                    <div class="multi-select-dropdown" id="targetDropdown">
+                        <?php if ($role === ROLE_TEACHER): ?>
+                            <?php foreach ($allClasses as $class): ?>
+                                <?php if (in_array((int)$class['id'], $teacherClassIds, true)): ?>
+                                    <label class="multi-select-option" data-scope="class">
+                                        <input type="checkbox" name="target_value[]" value="class_<?= (int)$class['id'] ?>" onchange="updateMultiSelectText('targetWidget', 'Select Target...')">
+                                        Course: <?= htmlspecialchars($class['class_name']) ?>
+                                    </label>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php foreach ($allowedRoleTargets as $roleTarget): ?>
+                                <label class="multi-select-option" data-scope="role">
+                                    <input type="checkbox" name="target_value[]" value="role_<?= htmlspecialchars($roleTarget) ?>" onchange="updateMultiSelectText('targetWidget', 'Select Target...')">
+                                    Role: <?= htmlspecialchars($roleTarget) ?>
+                                </label>
+                            <?php endforeach; ?>
+                            <?php foreach ($allClasses as $class): ?>
+                                <label class="multi-select-option" data-scope="class">
+                                    <input type="checkbox" name="target_value[]" value="class_<?= (int)$class['id'] ?>" onchange="updateMultiSelectText('targetWidget', 'Select Target...')">
+                                    Course: <?= htmlspecialchars($class['class_name']) ?>
+                                </label>
+                            <?php endforeach; ?>
+                            <?php foreach ($userTargets as $targetUser): ?>
+                                <label class="multi-select-option" data-scope="user">
+                                    <input type="checkbox" name="target_value[]" value="user_<?= (int)$targetUser['id'] ?>" onchange="updateMultiSelectText('targetWidget', 'Select Target...')">
+                                    User: <?= htmlspecialchars($targetUser['full_name'] . ' [' . $targetUser['role'] . ']') ?>
+                                </label>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
 
                 <button type="submit">Send Notification</button>
             </form>
         </section>
     </div>
+
+<script>
+function toggleMultiSelect(dropdownId, btnElement) {
+    var dropdown = document.getElementById(dropdownId);
+    if (dropdown.classList.contains('show')) {
+        dropdown.classList.remove('show');
+        btnElement.classList.remove('active');
+    } else {
+        // close all others first
+        document.querySelectorAll('.multi-select-dropdown').forEach(function(d) { d.classList.remove('show'); });
+        document.querySelectorAll('.multi-select-button').forEach(function(b) { b.classList.remove('active'); });
+        
+        dropdown.classList.add('show');
+        btnElement.classList.add('active');
+    }
+}
+
+function updateMultiSelectText(widgetId, defaultText) {
+    var widget = document.getElementById(widgetId);
+    var checkboxes = widget.querySelectorAll('input[type="checkbox"]:checked');
+    var btnText = widget.querySelector('.multi-select-button-text');
+    
+    if (checkboxes.length === 0) {
+        btnText.textContent = defaultText;
+    } else {
+        var labels = [];
+        checkboxes.forEach(function(cb) {
+            labels.push(cb.parentNode.textContent.trim());
+        });
+        btnText.textContent = 'Selected: ' + labels.join(', ');
+    }
+}
+
+function updateTargetDropdown() {
+    var scopeCheckboxes = document.querySelectorAll('#scopeDropdown input[type="checkbox"]:checked');
+    var selectedScopes = Array.from(scopeCheckboxes).map(function(cb) { return cb.value; });
+    var targetWidget = document.getElementById('targetWidget');
+    var targetLabel = document.getElementById('targetValueLabel');
+    var targetOptions = document.querySelectorAll('#targetDropdown .multi-select-option');
+
+    if (selectedScopes.includes('all')) {
+        targetWidget.style.display = 'none';
+        targetLabel.style.display = 'none';
+        // Deselect all
+        document.querySelectorAll('#targetDropdown input[type="checkbox"]').forEach(function(cb) {
+            cb.checked = false;
+        });
+        updateMultiSelectText('targetWidget', 'Select Target...');
+    } else {
+        targetWidget.style.display = '';
+        targetLabel.style.display = '';
+
+        targetOptions.forEach(function(opt) {
+            var scope = opt.getAttribute('data-scope');
+            if (selectedScopes.includes(scope)) {
+                opt.style.display = '';
+            } else {
+                opt.style.display = 'none';
+                opt.querySelector('input[type="checkbox"]').checked = false;
+            }
+        });
+        updateMultiSelectText('targetWidget', 'Select Target...');
+    }
+}
+
+// Close dropdowns if clicked outside
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.multi-select-widget')) {
+        document.querySelectorAll('.multi-select-dropdown').forEach(function(d) { d.classList.remove('show'); });
+        document.querySelectorAll('.multi-select-button').forEach(function(b) { b.classList.remove('active'); });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateTargetDropdown();
+});
+</script>
+
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

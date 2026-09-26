@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN]);
 
@@ -290,7 +290,7 @@ require __DIR__ . '/../../includes/header.php';
 
             <div class="toolbar-row">
                 <div class="toolbar-actions-tight">
-                    <a class="nav-item" href="/school-erp/modules/inventory/export_items_excel.php">Download Excel</a>
+                    <a class="nav-item" href="/itierp/modules/inventory/export_items_excel.php">Download Excel</a>
                 </div>
             </div>
 

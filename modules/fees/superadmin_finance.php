@@ -127,25 +127,25 @@ $cycleReport = $pdo->query(
 )->fetchAll();
 
 $adjustmentHistory = $pdo->query(
-    'SELECT fa.id, fa.adjustment_type, fa.amount, fa.reason, fa.created_at,
-            sf.id AS student_fee_id,
-            su.full_name AS approved_by_name,
-            stu.full_name AS student_name
+    'SELECT s.id AS student_id,
+            stu.full_name AS student_name,
+            SUM(fa.amount) AS total_adjustment_amount,
+            MAX(fa.created_at) AS last_adjustment_time
      FROM fee_adjustments fa
      JOIN student_fees sf ON sf.id = fa.student_fee_id
-     LEFT JOIN users su ON su.id = fa.approved_by
      JOIN students s ON s.id = sf.student_id
      LEFT JOIN users stu ON stu.id = s.user_id
-     ORDER BY fa.id DESC
+     GROUP BY s.id, stu.full_name
+     ORDER BY MAX(fa.id) DESC
      LIMIT 50'
 )->fetchAll();
 
 $sfSearchName = trim($_GET['sf_name'] ?? '');
 $sfSearchStatus = trim($_GET['sf_status'] ?? '');
 
-$adjustableFeeSql =
+$adjustableFeeSql = 
     'SELECT sf.id, sf.period_label, sf.total_amount, sf.discount_amount, sf.payable_amount, sf.paid_amount, sf.status,
-            fs.fee_type, fs.fee_title,
+            fs.fee_type, fs.fee_title, sf.student_id,
             su.full_name AS student_name,
             l.admission_concession_amount,
             l.admission_concession_note
@@ -172,20 +172,30 @@ $sfStmt = $pdo->prepare($adjustableFeeSql);
 $sfStmt->execute($sfParams);
 $adjustableFees = $sfStmt->fetchAll();
 
-$concessionFees = $pdo->query(
-    'SELECT sf.id, sf.period_label, sf.payable_amount, sf.discount_amount,
-            fs.fee_title, fs.fee_type,
+$concessionStudents = $pdo->query(
+    'SELECT s.id AS student_id,
             su.full_name AS student_name,
             l.admission_concession_amount,
             l.admission_concession_note
-     FROM student_fees sf
-     JOIN fee_structures fs ON fs.id = sf.fee_structure_id
-     JOIN students s ON s.id = sf.student_id
-     LEFT JOIN users su ON su.id = s.user_id
-     LEFT JOIN leads l ON l.converted_student_id = s.id
+     FROM students s
+     JOIN users su ON su.id = s.user_id
+     JOIN leads l ON l.converted_student_id = s.id
      WHERE COALESCE(l.admission_concession_amount, 0) > 0
-     ORDER BY l.id DESC, sf.id DESC
+     ORDER BY l.id DESC
      LIMIT 50'
+)->fetchAll();
+
+$allEnrolledStudents = $pdo->query(
+    'SELECT s.id AS student_id,
+            su.full_name AS student_name,
+            c.class_name
+     FROM students s
+     JOIN users su ON su.id = s.user_id
+     LEFT JOIN student_class_enrollments sce ON sce.student_id = s.id AND sce.is_active = 1
+     LEFT JOIN classes c ON c.id = sce.class_id
+     WHERE s.status = "enrolled"
+     ORDER BY su.full_name ASC
+     LIMIT 500'
 )->fetchAll();
 
 $pageTitle = 'Super Admin Finance Control';
@@ -241,7 +251,7 @@ require __DIR__ . '/../../includes/header.php';
 <section class="card">
     <div class="form-header-actions">
         <h3>Finance Activity</h3>
-        <button type="button" class="btn-toggle-form" onclick="toggleForm('form-adjustment', this)">+ Set Payable Override</button>
+        <button type="button" class="btn-toggle-form" onclick="openOverrideModal(null, this)">+ Set Payable Override</button>
     </div>
 
     <div class="finance-tabs" role="tablist" aria-label="Finance activity tabs">
@@ -250,8 +260,12 @@ require __DIR__ . '/../../includes/header.php';
             <span class="finance-tab-count"><?= count($adjustmentHistory) ?></span>
         </button>
         <button type="button" class="finance-tab" data-finance-tab="tab-concessions" onclick="switchFinanceTab('tab-concessions')">
-            Admission Concessions On File
-            <span class="finance-tab-count"><?= count($concessionFees) ?></span>
+            Admission Concessions
+            <span class="finance-tab-count"><?= count($concessionStudents) ?></span>
+        </button>
+        <button type="button" class="finance-tab" data-finance-tab="tab-all-students" onclick="switchFinanceTab('tab-all-students')">
+            New Fee Adjustment
+            <span class="finance-tab-count"><?= count($allEnrolledStudents) ?></span>
         </button>
     </div>
 
@@ -260,32 +274,26 @@ require __DIR__ . '/../../includes/header.php';
             <table class="compact-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Student</th>
-                        <th>Fee Row</th>
-                        <th>Type</th>
-                        <th>Amount</th>
-                        <th>Reason</th>
-                        <th>Approved By</th>
-                        <th>Time</th>
+                        <th>Total Adjustment</th>
+                        <th>Latest Date</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($adjustmentHistory as $row): ?>
                         <tr>
-                            <td><?= (int)$row['id'] ?></td>
                             <td><?= htmlspecialchars((string)$row['student_name']) ?></td>
-                            <td><?= (int)$row['student_fee_id'] ?></td>
-                            <td><?= htmlspecialchars($row['adjustment_type']) ?></td>
-                            <td><?= number_format((float)$row['amount'], 2) ?></td>
-                            <td><?= htmlspecialchars((string)$row['reason']) ?></td>
-                            <td><?= htmlspecialchars((string)$row['approved_by_name']) ?></td>
-                            <td><?= htmlspecialchars((string)$row['created_at']) ?></td>
+                            <td><?= number_format((float)$row['total_adjustment_amount'], 2) ?></td>
+                            <td><?= htmlspecialchars((string)$row['last_adjustment_time']) ?></td>
+                            <td>
+                                <button type="button" class="btn-toggle-form btn-compact" onclick="openOverrideModal(<?= (int)$row['student_id'] ?>, this)">Override</button>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (empty($adjustmentHistory)): ?>
                         <tr>
-                            <td colspan="8">No adjustments made yet.</td>
+                            <td colspan="4">No adjustments made yet.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -299,27 +307,55 @@ require __DIR__ . '/../../includes/header.php';
                 <thead>
                     <tr>
                         <th>Student</th>
-                        <th>Fee</th>
-                        <th>Period</th>
-                        <th>Concession</th>
+                        <th>Concession Amount</th>
                         <th>Note</th>
-                        <th>Payable</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($concessionFees as $row): ?>
+                    <?php foreach ($concessionStudents as $row): ?>
                         <tr>
                             <td><?= htmlspecialchars((string)$row['student_name']) ?></td>
-                            <td><?= htmlspecialchars((string)$row['fee_title']) ?></td>
-                            <td><?= htmlspecialchars((string)$row['period_label']) ?></td>
                             <td>₹<?= number_format((float)$row['admission_concession_amount'], 2) ?></td>
                             <td><?= htmlspecialchars((string)$row['admission_concession_note']) ?></td>
-                            <td>₹<?= number_format((float)$row['payable_amount'], 2) ?></td>
+                            <td>
+                                <button type="button" class="btn-toggle-form btn-compact" onclick="openOverrideModal(<?= (int)$row['student_id'] ?>, this)">Override</button>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (empty($concessionFees)): ?>
+                    <?php if (empty($concessionStudents)): ?>
                         <tr>
-                            <td colspan="6">No admission concessions found.</td>
+                            <td colspan="4">No admission concessions found.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-all-students" class="finance-tab-panel">
+        <div class="table-wrap">
+            <table class="compact-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Current Class</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($allEnrolledStudents as $row): ?>
+                        <tr>
+                            <td><?= htmlspecialchars((string)$row['student_name']) ?></td>
+                            <td><?= htmlspecialchars((string)($row['class_name'] ?? 'Not Assigned')) ?></td>
+                            <td>
+                                <button type="button" class="btn-toggle-form btn-compact" onclick="openOverrideModal(<?= (int)$row['student_id'] ?>, this)">Override</button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($allEnrolledStudents)): ?>
+                        <tr>
+                            <td colspan="3">No active students found.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -336,11 +372,11 @@ require __DIR__ . '/../../includes/header.php';
             <input type="hidden" name="adjustment_type" value="override">
 
             <label>Student Fee Record</label>
-            <select name="student_fee_id" required>
+            <select name="student_fee_id" id="override_student_fee_id" required>
                 <option value="">Select fee record</option>
                 <?php foreach ($adjustableFees as $fee): ?>
-                    <option value="<?= (int)$fee['id'] ?>">
-                        <?= htmlspecialchars('#' . $fee['id'] . ' | ' . $fee['student_name'] . ' | ' . $fee['fee_title'] . ' | ' . ucwords(str_replace('_', ' ', (string)$fee['fee_type'])) . ' | ' . $fee['period_label'] . ' | payable ' . number_format((float)$fee['payable_amount'], 2) . ((float)($fee['admission_concession_amount'] ?? 0) > 0 ? ' | concession ₹' . number_format((float)$fee['admission_concession_amount'], 2) . (!empty($fee['admission_concession_note']) ? ' | ' . $fee['admission_concession_note'] : '') : '')) ?>
+                    <option value="<?= (int)$fee['id'] ?>" data-student-id="<?= (int)$fee['student_id'] ?>">
+                        <?= htmlspecialchars('#' . $fee['id'] . ' | ' . $fee['student_name'] . ' | ' . $fee['fee_title'] . ' | ' . ucwords(str_replace('_', ' ', (string)$fee['fee_type'])) . ' | ' . $fee['period_label'] . ' | payable ' . number_format((float)$fee['payable_amount'], 2)) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -373,6 +409,32 @@ function switchFinanceTab(tabId) {
     if (selectedPanel) {
         selectedPanel.classList.add('active');
     }
+}
+
+function openOverrideModal(studentId, btn) {
+    var select = document.getElementById('override_student_fee_id');
+    var options = select.querySelectorAll('option');
+    var hasOptions = false;
+    
+    options.forEach(function(opt) {
+        if (!opt.value) return; // skip default option
+        
+        if (studentId === null || opt.getAttribute('data-student-id') == studentId) {
+            opt.style.display = '';
+            hasOptions = true;
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+    
+    select.value = '';
+    
+    if (!hasOptions) {
+        alert('No adjustable fees found for this student. They may not have any pending/partial fees, or you may need to adjust the filters.');
+        return;
+    }
+    
+    toggleForm('form-adjustment', btn);
 }
 </script>
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

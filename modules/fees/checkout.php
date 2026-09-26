@@ -79,12 +79,10 @@ function create_razorpay_order(array $paymentConfig, int $amountPaise, string $r
     $response = curl_exec($curl);
     if ($response === false) {
         $error = curl_error($curl);
-        curl_close($curl);
         throw new RuntimeException('Razorpay request failed: ' . $error);
     }
 
     $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
 
     $decoded = json_decode($response, true);
     if (!is_array($decoded)) {
@@ -234,7 +232,7 @@ if (empty($errors) && $useRazorpay && $_SERVER['REQUEST_METHOD'] === 'POST' && (
                 $pdo->commit();
 
                 unset($_SESSION['razorpay_orders'][$orderId]);
-                header('Location: /school-erp/modules/fees/student_fees.php?payment=success');
+                header('Location: /itierp/modules/fees/student_fees.php?payment=success');
                 exit;
             } catch (Throwable $throwable) {
                 if ($pdo->inTransaction()) {
@@ -318,7 +316,7 @@ if (empty($errors) && !$useRazorpay && $_SERVER['REQUEST_METHOD'] === 'POST' && 
             ]);
 
             $pdo->commit();
-            header('Location: /school-erp/modules/fees/student_fees.php?payment=success');
+            header('Location: /itierp/modules/fees/student_fees.php?payment=success');
             exit;
         } catch (Throwable $throwable) {
             if ($pdo->inTransaction()) {
@@ -341,7 +339,7 @@ require __DIR__ . '/../../includes/header.php';
                 <p><?= htmlspecialchars($error) ?></p>
             <?php endforeach; ?>
         </div>
-        <p><a href="/school-erp/modules/fees/student_fees.php">Back to Fees</a></p>
+        <p><a href="/itierp/modules/fees/student_fees.php">Back to Fees</a></p>
     <?php else: ?>
         <?php $outstanding = max(0, (float)$fee['payable_amount'] - (float)$fee['paid_amount']); ?>
         <div class="table-wrap">
@@ -370,7 +368,7 @@ require __DIR__ . '/../../includes/header.php';
                             name: <?= json_encode((string)$paymentConfig['merchant_name']) ?>,
                             description: <?= json_encode((string)($fee['fee_title'] . ' - ' . $fee['period_label'])) ?>,
                             order_id: <?= json_encode((string)$razorpayOrder['id']) ?>,
-                            callback_url: '/school-erp/modules/fees/checkout.php?action=razorpay_callback&student_fee_id=<?= (int)$studentFeeId ?>&amount=<?= urlencode((string)$requestedAmount) ?>',
+                            callback_url: '/itierp/modules/fees/checkout.php?action=razorpay_callback&student_fee_id=<?= (int)$studentFeeId ?>&amount=<?= urlencode((string)$requestedAmount) ?>',
                             prefill: {
                                 name: <?= json_encode((string)$user['name']) ?>,
                                 email: <?= json_encode((string)$user['email']) ?>
@@ -402,7 +400,7 @@ require __DIR__ . '/../../includes/header.php';
                 <button type="submit">Confirm and Pay</button>
             </form>
         <?php endif; ?>
-        <p class="table-wrap-offset"><a href="/school-erp/modules/fees/student_fees.php">Cancel</a></p>
+        <p class="table-wrap-offset"><a href="/itierp/modules/fees/student_fees.php">Cancel</a></p>
     <?php endif; ?>
 </section>
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

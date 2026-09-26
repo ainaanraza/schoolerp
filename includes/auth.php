@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -27,7 +27,7 @@ function current_role(): ?string
 function require_login(): void
 {
     if (!is_logged_in()) {
-        header('Location: /school-erp/index.php');
+        header('Location: /itierp/index.php');
         exit;
     }
 }
@@ -72,11 +72,11 @@ function logout_user(): void
 function role_home_path(string $role): string
 {
     return match ($role) {
-        ROLE_SUPER_ADMIN => '/school-erp/superadmin/dashboard.php',
-        ROLE_ADMIN => '/school-erp/admin/dashboard.php',
-        ROLE_TEACHER => '/school-erp/teacher/dashboard.php',
-        ROLE_STUDENT => '/school-erp/student/dashboard.php',
-        ROLE_PARENT => '/school-erp/parent/dashboard.php',
-        default => '/school-erp/index.php',
+        ROLE_SUPER_ADMIN => '/itierp/superadmin/dashboard.php',
+        ROLE_ADMIN => '/itierp/admin/dashboard.php',
+        ROLE_TEACHER => '/itierp/teacher/dashboard.php',
+        ROLE_STUDENT => '/itierp/student/dashboard.php',
+        ROLE_PARENT => '/itierp/parent/dashboard.php',
+        default => '/itierp/index.php',
     };
 }

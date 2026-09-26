@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN]);
 
 function redirect_fees(string $query): void
 {
-    header('Location: /school-erp/modules/fees/student_fees.php' . $query);
+    header('Location: /itierp/modules/fees/student_fees.php' . $query);
     exit;
 }
 

@@ -1,8 +1,8 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/_auth.php';
 
 if (developer_is_logged_in()) {
-    header('Location: /school-erp/developer/portal.php');
+    header('Location: /itierp/developer/portal.php');
     exit;
 }
 
@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!developer_login($username, $password)) {
         $error = 'Invalid developer portal credentials.';
     } else {
-        header('Location: /school-erp/developer/portal.php');
+        header('Location: /itierp/developer/portal.php');
         exit;
     }
 }
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Developer Portal Login</title>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/school-erp/assets/css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="/itierp/assets/css/style.css?v=<?= time() ?>">
 </head>
 <body class="is-guest">
     <main class="container guest-container">

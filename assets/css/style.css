@@ -75,7 +75,8 @@ p {
 /* Layout */
 .app-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   position: relative;
 }
 
@@ -90,10 +91,27 @@ p {
   box-shadow: 0 20px 40px rgba(8, 18, 38, 0.45);
   flex-shrink: 0;
   z-index: 10;
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.app-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.app-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.app-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .sidebar-brand h2 {
@@ -354,10 +372,19 @@ body.nav-open .mobile-nav-toggle span:nth-child(3) {
   max-width: 100%;
 }
 
+body.is-guest {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
 .guest-container {
   max-width: 520px;
-  margin: 5rem auto;
-  padding: 2rem;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem;
 }
 
 /* Cards & Panels */
@@ -1001,7 +1028,7 @@ tr:last-child td {
 
 /* Auth Login Page specific */
 .guest-container .card {
-  padding: 2rem 1.7rem;
+  padding: 1.5rem 1.25rem;
   box-shadow: var(--shadow-lg), 0 28px 60px rgba(17, 31, 53, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.95);
   position: relative;
@@ -1017,36 +1044,36 @@ tr:last-child td {
 }
 
 .guest-container h2 {
-  font-size: 2.05rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.75rem;
+  margin-bottom: 0.25rem;
   color: var(--secondary);
   font-weight: 700;
 }
 
 .login-brand-block {
-  margin-bottom: 1.4rem;
+  margin-bottom: 1rem;
   position: relative;
   z-index: 1;
 }
 
 .login-brand-mark {
-  width: 76px;
-  height: 76px;
-  border-radius: 18px;
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
   border: 1px solid rgba(181, 138, 74, 0.34);
   background: linear-gradient(145deg, #fffdf8, #f5ead7);
   box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .login-brand-logo {
-  width: 58px;
-  height: 58px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .login-overline {
@@ -1066,7 +1093,7 @@ tr:last-child td {
 .stacked-form {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 0.8rem;
   position: relative;
   z-index: 1;
 }
@@ -1361,6 +1388,12 @@ tr:last-child td {
 .btn-toggle-form:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 4px rgba(209, 168, 101, 0.35), 0 8px 16px rgba(163, 118, 50, 0.22);
+}
+
+.btn-toggle-form.btn-compact {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.72rem;
+  border-radius: 6px;
 }
 
 .btn-concession-slim {
@@ -1866,6 +1899,11 @@ tr:last-child td {
 
   .form-grid {
     gap: 0.68rem;
+    max-width: 100%;
+  }
+
+  .grid-2, .grid-3 {
+    grid-template-columns: 1fr;
   }
 
   .form-grid input,
@@ -1911,6 +1949,26 @@ tr:last-child td {
     padding: 0.2rem 0.48rem;
     font-size: 0.64rem;
   }
+
+  body.is-guest {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    padding: 1.5rem 0;
+  }
+
+  .guest-container {
+    padding: 0 1rem;
+    margin: auto;
+  }
+
+  .guest-container .card {
+    padding: 1.5rem 1.15rem;
+  }
+  
+  .guest-container h2 {
+    font-size: 1.5rem;
+  }
 }
 
 .app-main-content {
@@ -1921,6 +1979,8 @@ tr:last-child td {
     radial-gradient(circle at 94% 4%, rgba(181, 138, 74, 0.11), transparent 20%),
     radial-gradient(circle at 6% 16%, rgba(31, 61, 119, 0.08), transparent 18%);
   min-width: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 body.is-guest {
@@ -1936,4 +1996,71 @@ body.is-guest::before {
     radial-gradient(circle at 85% 18%, rgba(181, 138, 74, 0.23), transparent 34%);
   pointer-events: none;
   z-index: -1;
+}
+
+/* Custom Multi Select Widget */
+.multi-select-widget {
+  position: relative;
+  width: 100%;
+}
+.multi-select-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--on-surface);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.multi-select-button:hover {
+  border-color: var(--primary);
+}
+.multi-select-button.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(181, 138, 74, 0.15);
+}
+.multi-select-button-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.multi-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  max-height: 250px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 4px;
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  display: none;
+}
+.multi-select-dropdown.show {
+  display: block;
+}
+.multi-select-option {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.95rem;
+  color: var(--on-surface);
+}
+.multi-select-option:hover {
+  background-color: var(--surface-container-highest);
+}
+.multi-select-option input[type="checkbox"] {
+  margin-right: 0.6rem;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
 }

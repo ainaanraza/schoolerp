@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN]);
 
 function redirect_with_message(string $query): void
 {
-    header('Location: /school-erp/modules/admission/leads.php' . $query);
+    header('Location: /itierp/modules/admission/leads.php' . $query);
     exit;
 }
 

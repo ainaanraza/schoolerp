@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/_auth.php';
 developer_require_login();
 require_once __DIR__ . '/../config/db.php';
@@ -367,7 +367,7 @@ $totalPages = max(1, (int)ceil($totalRows / $perPage));
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Developer Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/school-erp/assets/css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="/itierp/assets/css/style.css?v=<?= time() ?>">
     <script>
     function closeAllDevForms() {
         var overlay = document.getElementById('modal-overlay');
@@ -439,7 +439,7 @@ $totalPages = max(1, (int)ceil($totalRows / $perPage));
                     <p>Separate authentication and separate session from all school portals.</p>
                 </div>
                 <div class="toolbar-actions-tight">
-                    <a class="nav-item" href="/school-erp/developer/logout.php">Logout</a>
+                    <a class="nav-item" href="/itierp/developer/logout.php">Logout</a>
                 </div>
             </div>
 
@@ -464,12 +464,12 @@ $totalPages = max(1, (int)ceil($totalRows / $perPage));
                     <h3>Portal Quick Links</h3>
                     <p style="margin-bottom: 10px;">Open portal entry points from one place.</p>
                     <div class="toolbar-row">
-                        <a class="nav-item" href="/school-erp/index.php" target="_blank" rel="noopener">Main Login</a>
-                        <a class="nav-item" href="/school-erp/superadmin/dashboard.php" target="_blank" rel="noopener">Super Admin</a>
-                        <a class="nav-item" href="/school-erp/admin/dashboard.php" target="_blank" rel="noopener">Admin</a>
-                        <a class="nav-item" href="/school-erp/teacher/dashboard.php" target="_blank" rel="noopener">Teacher</a>
-                        <a class="nav-item" href="/school-erp/student/dashboard.php" target="_blank" rel="noopener">Student</a>
-                        <a class="nav-item" href="/school-erp/parent/dashboard.php" target="_blank" rel="noopener">Parent</a>
+                        <a class="nav-item" href="/itierp/index.php" target="_blank" rel="noopener">Main Login</a>
+                        <a class="nav-item" href="/itierp/superadmin/dashboard.php" target="_blank" rel="noopener">Super Admin</a>
+                        <a class="nav-item" href="/itierp/admin/dashboard.php" target="_blank" rel="noopener">Admin</a>
+                        <a class="nav-item" href="/itierp/teacher/dashboard.php" target="_blank" rel="noopener">Teacher</a>
+                        <a class="nav-item" href="/itierp/student/dashboard.php" target="_blank" rel="noopener">Student</a>
+                        <a class="nav-item" href="/itierp/parent/dashboard.php" target="_blank" rel="noopener">Parent</a>
                     </div>
                 </div>
 

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN]);
 
@@ -65,7 +65,7 @@ $isLocalPhotoPath = static function (?string $path): bool {
         return false;
     }
 
-    return str_starts_with($path, '/school-erp/uploads/photos/');
+    return str_starts_with($path, '/itierp/uploads/photos/');
 };
 
 $deleteLocalPhoto = static function (?string $path) use ($isLocalPhotoPath): void {
@@ -73,7 +73,7 @@ $deleteLocalPhoto = static function (?string $path) use ($isLocalPhotoPath): voi
         return;
     }
 
-    $relativePath = ltrim(str_replace('/school-erp/', '', $path), '/');
+    $relativePath = ltrim(str_replace('/itierp/', '', $path), '/');
     $absolutePath = __DIR__ . '/../../' . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
     if (is_file($absolutePath)) {
         @unlink($absolutePath);
@@ -148,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
             $filename = 'student_' . $studentId . '_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
             if (move_uploaded_file($_FILES['photo']['tmp_name'], $uploadDir . $filename)) {
-                $updatedPhotoPath = '/school-erp/uploads/photos/' . $filename;
+                $updatedPhotoPath = '/itierp/uploads/photos/' . $filename;
             } else {
                 $errors[] = 'Failed to save uploaded photo.';
             }
@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ext = str_contains($parts[0], 'png') ? 'png' : 'jpg';
                     $filename = 'student_cam_' . $studentId . '_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
                     if (file_put_contents($uploadDir . $filename, $decoded) !== false) {
-                        $updatedPhotoPath = '/school-erp/uploads/photos/' . $filename;
+                        $updatedPhotoPath = '/itierp/uploads/photos/' . $filename;
                     } else {
                         $errors[] = 'Failed to save captured photo.';
                     }
@@ -292,7 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $deleteLocalPhoto($currentPhotoPath);
             }
 
-            header('Location: /school-erp/modules/admission/students.php?updated=1');
+            header('Location: /itierp/modules/admission/students.php?updated=1');
             exit;
         } catch (Throwable $throwable) {
             if ($pdo->inTransaction()) {

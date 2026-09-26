@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN]);
 
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $inventoryTableExists && $item) {
             'id' => $itemId,
         ]);
 
-        header('Location: /school-erp/modules/inventory/items.php?updated=1');
+        header('Location: /itierp/modules/inventory/items.php?updated=1');
         exit;
     }
 }
@@ -144,7 +144,7 @@ require __DIR__ . '/../../includes/header.php';
         </form>
 
         <div class="toolbar-row toolbar-row-end">
-            <a class="nav-item" href="/school-erp/modules/inventory/items.php#section-table">Back to Inventory</a>
+            <a class="nav-item" href="/itierp/modules/inventory/items.php#section-table">Back to Inventory</a>
         </div>
     <?php endif; ?>
 </section>
