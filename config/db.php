@@ -1,10 +1,11 @@
 <?php
-$isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || ($_SERVER['SERVER_NAME'] ?? '') === 'localhost';
+$isHostinger = str_contains(__DIR__, 'u971377821') || str_contains(__DIR__, 'erp.unityiti.edu.in') || (DIRECTORY_SEPARATOR === '/' && is_dir('/home/u971377821'));
+$isLocal = !$isHostinger && (php_sapi_name() === 'cli' || in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || ($_SERVER['SERVER_NAME'] ?? '') === 'localhost');
 
 $host = getenv('DB_HOST') ?: 'localhost';
-$dbname = getenv('DB_NAME') ?: ($isLocal ? 'school_erp' : 'u971377821_itierp_db');
-$username = getenv('DB_USER') ?: ($isLocal ? 'root' : 'u971377821_itierp_user');
-$password = getenv('DB_PASS') ?: ($isLocal ? '' : 'Itierp000**##');
+$dbname = getenv('DB_NAME') ?: ($isHostinger ? 'u971377821_itierp_db' : ($isLocal ? 'school_erp' : 'u971377821_itierp_db'));
+$username = getenv('DB_USER') ?: ($isHostinger ? 'u971377821_itierp_user' : ($isLocal ? 'root' : 'u971377821_itierp_user'));
+$password = getenv('DB_PASS') ?: ($isHostinger ? 'Itierp000**##' : ($isLocal ? '' : 'Itierp000**##'));
 
 function ensure_schema_initialized(PDO $pdo): void
 {

@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fullName = trim($_POST['full_name'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
+        $designation = trim($_POST['designation'] ?? '');
 
         if ($fullName === '' || $email === '' || $password === '') {
             $errors[] = 'Name, email, and password are required.';
@@ -28,14 +29,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'An account with this email already exists.';
             } else {
                 $createStmt = $pdo->prepare(
-                    'INSERT INTO users (full_name, email, password_hash, role, is_active)
-                     VALUES (:full_name, :email, :password_hash, :role, :is_active)'
+                    'INSERT INTO users (full_name, email, password_hash, role, designation, is_active)
+                     VALUES (:full_name, :email, :password_hash, :role, :designation, :is_active)'
                 );
                 $createStmt->execute([
                     'full_name' => $fullName,
                     'email' => $email,
                     'password_hash' => password_hash($password, PASSWORD_DEFAULT),
                     'role' => ROLE_ADMIN,
+                    'designation' => $designation !== '' ? $designation : null,
                     'is_active' => 1,
                 ]);
                 $success[] = 'Admin user created successfully.';
@@ -84,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $employeeCode = trim($_POST['employee_code'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
         $qualification = trim($_POST['qualification'] ?? '');
+        $designation = trim($_POST['designation'] ?? '');
 
         if ($fullName === '' || $email === '' || $password === '') {
             $errors[] = 'Teacher name, email, and password are required.';
@@ -98,26 +101,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     $pdo->beginTransaction();
                     $createUserStmt = $pdo->prepare(
-                        'INSERT INTO users (full_name, email, password_hash, role, is_active)
-                         VALUES (:full_name, :email, :password_hash, :role, :is_active)'
+                        'INSERT INTO users (full_name, email, password_hash, role, designation, is_active)
+                         VALUES (:full_name, :email, :password_hash, :role, :designation, :is_active)'
                     );
                     $createUserStmt->execute([
                         'full_name' => $fullName,
                         'email' => $email,
                         'password_hash' => password_hash($password, PASSWORD_DEFAULT),
                         'role' => ROLE_TEACHER,
+                        'designation' => $designation !== '' ? $designation : null,
                         'is_active' => 1,
                     ]);
                     $userId = (int)$pdo->lastInsertId();
                     $createTeacherStmt = $pdo->prepare(
-                        'INSERT INTO teachers (user_id, employee_code, phone, qualification)
-                         VALUES (:user_id, :employee_code, :phone, :qualification)'
+                        'INSERT INTO teachers (user_id, employee_code, phone, qualification, designation)
+                         VALUES (:user_id, :employee_code, :phone, :qualification, :designation)'
                     );
                     $createTeacherStmt->execute([
                         'user_id' => $userId,
                         'employee_code' => $employeeCode !== '' ? $employeeCode : null,
                         'phone' => $phone !== '' ? $phone : null,
                         'qualification' => $qualification !== '' ? $qualification : null,
+                        'designation' => $designation !== '' ? $designation : null,
                     ]);
                     $pdo->commit();
                     $success[] = 'Teacher account created successfully.';
@@ -193,6 +198,7 @@ $staffSql = 'SELECT u.id,
                 u.full_name,
                 u.email,
                 u.role,
+                u.designation,
                 u.is_active,
                 t.id AS teacher_id,
                 t.employee_code,
@@ -281,6 +287,7 @@ require __DIR__ . '/../../includes/header.php';
                     <tr>
                         <th>ID</th>
                         <th>Role</th>
+                        <th>Designation</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Emp Code</th>
@@ -296,6 +303,7 @@ require __DIR__ . '/../../includes/header.php';
                         <tr>
                             <td><?= (int)$staff['id'] ?></td>
                             <td><?= htmlspecialchars($staff['role'] === ROLE_ADMIN ? 'Admin' : 'Teacher') ?></td>
+                            <td><strong><?= htmlspecialchars((string)($staff['designation'] ?: ($staff['qualification'] ?: '—'))) ?></strong></td>
                             <td><?= htmlspecialchars((string)$staff['full_name']) ?></td>
                             <td><?= htmlspecialchars((string)$staff['email']) ?></td>
                             <td><?= htmlspecialchars((string)($staff['employee_code'] ?: '—')) ?></td>
@@ -322,7 +330,7 @@ require __DIR__ . '/../../includes/header.php';
                         </tr>
                     <?php endforeach; ?>
                     <?php if (empty($staffMembers)): ?>
-                        <tr><td colspan="10">No staff members found.</td></tr>
+                        <tr><td colspan="11">No staff members found.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -339,6 +347,9 @@ require __DIR__ . '/../../includes/header.php';
 
             <label>Full Name</label>
             <input type="text" name="full_name" required>
+
+            <label>Designation</label>
+            <input type="text" name="designation" placeholder="e.g., Manager, Co-ordinator">
 
             <label>Email</label>
             <input type="email" name="email" required>
@@ -359,6 +370,9 @@ require __DIR__ . '/../../includes/header.php';
 
             <label>Full Name *</label>
             <input type="text" name="full_name" required>
+
+            <label>Designation (optional)</label>
+            <input type="text" name="designation" placeholder="e.g., Instructor">
 
             <label>Email *</label>
             <input type="email" name="email" required>

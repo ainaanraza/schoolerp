@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_once __DIR__ . '/../../includes/delete_helpers.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_TEACHER]);
@@ -340,8 +340,10 @@ require __DIR__ . '/../../includes/header.php';
                 <?php foreach ($students as $student): ?>
                     <tr>
                         <td>
-                            <?php if (!empty($student['photo_path'])): ?>
-                                <img src="<?= htmlspecialchars((string)$student['photo_path']) ?>" alt="Student Photo" class="table-photo-thumb">
+                            <?php $photoUrl = resolve_photo_url($student['photo_path'] ?? null); ?>
+                            <?php if (!empty($photoUrl)): ?>
+                                <img src="<?= htmlspecialchars($photoUrl) ?>" alt="Student Photo" class="table-photo-thumb" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                <span class="table-photo-placeholder" style="display:none;">No Photo</span>
                             <?php else: ?>
                                 <span class="table-photo-placeholder">No Photo</span>
                             <?php endif; ?>

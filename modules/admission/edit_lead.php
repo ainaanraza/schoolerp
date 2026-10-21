@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN]);
 
@@ -176,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
             $filename = 'lead_' . $leadId . '_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
             if (move_uploaded_file($_FILES['photo']['tmp_name'], $uploadDir . $filename)) {
-                $updatedPhotoPath = '/itierp/uploads/photos/' . $filename;
+                $updatedPhotoPath = 'uploads/photos/' . $filename;
             } else {
                 $errors[] = 'Failed to save uploaded photo.';
             }
@@ -193,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ext = str_contains($parts[0], 'png') ? 'png' : 'jpg';
                     $filename = 'lead_cam_' . $leadId . '_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
                     if (file_put_contents($uploadDir . $filename, $decoded) !== false) {
-                        $updatedPhotoPath = '/itierp/uploads/photos/' . $filename;
+                        $updatedPhotoPath = 'uploads/photos/' . $filename;
                     } else {
                         $errors[] = 'Failed to save captured photo.';
                     }
@@ -346,7 +346,7 @@ require __DIR__ . '/../../includes/header.php';
         <div class="photo-upload-area">
             <div class="photo-preview" id="photoPreview">
                 <?php if (!empty($lead['photo_path'])): ?>
-                    <img id="previewImg" src="<?= htmlspecialchars((string)$lead['photo_path']) ?>" alt="Lead Photo">
+                    <img id="previewImg" src="<?= htmlspecialchars(resolve_photo_url($lead['photo_path'])) ?>" alt="Lead Photo">
                     <span id="previewPlaceholder" class="is-hidden">No photo selected</span>
                 <?php else: ?>
                     <img id="previewImg" src="" alt="Lead Photo" class="is-hidden">
@@ -363,27 +363,22 @@ require __DIR__ . '/../../includes/header.php';
             <input type="hidden" name="remove_photo" id="removePhotoInput" value="0">
         </div>
 
-        <div id="cameraModal" class="camera-modal is-hidden">
-            <div class="camera-modal-inner">
-                <video id="cameraFeed" autoplay playsinline></video>
-            <canvas id="cameraCanvas" class="is-hidden"></canvas>
-                <div class="camera-modal-actions">
-                    <button type="button" id="captureBtn" class="photo-btn">Capture</button>
-                    <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <label>Address</label>
-        <textarea name="address" rows="2"><?= htmlspecialchars((string)($lead['address'] ?? '')) ?></textarea>
-
-        <label>Notes</label>
-        <textarea name="notes" rows="3"><?= htmlspecialchars((string)($lead['notes'] ?? '')) ?></textarea>
-
         <button type="submit">Save Changes</button>
         <a class="nav-item" href="/itierp/modules/admission/leads.php">Back to Leads</a>
     </form>
 </section>
+
+<!-- Camera Modal (Positioned at viewport root) -->
+<div id="cameraModal" class="camera-modal is-hidden">
+    <div class="camera-modal-inner">
+        <video id="cameraFeed" autoplay playsinline></video>
+        <canvas id="cameraCanvas" class="is-hidden"></canvas>
+        <div class="camera-modal-actions">
+            <button type="button" id="captureBtn" class="photo-btn">&#128248; Capture</button>
+            <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>
+        </div>
+    </div>
+</div>
 
 <script>
 (function() {
@@ -400,6 +395,11 @@ require __DIR__ . '/../../includes/header.php';
     var cameraData = document.getElementById('cameraPhotoData');
     var removePhotoInput = document.getElementById('removePhotoInput');
     var stream = null;
+
+    // Ensure camera modal is attached directly to document.body
+    if (cameraModal && cameraModal.parentNode !== document.body) {
+        document.body.appendChild(cameraModal);
+    }
 
     function showPreview(src) {
         previewImg.src = src;
@@ -429,19 +429,41 @@ require __DIR__ . '/../../includes/header.php';
     clearBtn.addEventListener('click', clearPreview);
 
     cameraBtn.addEventListener('click', function() {
+        if (cameraModal.parentNode !== document.body) {
+            document.body.appendChild(cameraModal);
+        }
+        cameraModal.classList.remove('is-hidden');
         cameraModal.style.display = 'flex';
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } })
-            .then(function(s) {
-                stream = s;
-                cameraFeed.srcObject = stream;
-            })
-            .catch(function() {
-                alert('Camera access denied or not available.');
-                cameraModal.style.display = 'none';
-            });
+        document.body.classList.add('modal-open');
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Camera is not supported on this device/browser.');
+            closeCamera();
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        })
+        .then(function(s) {
+            stream = s;
+            cameraFeed.srcObject = stream;
+        })
+        .catch(function(err) {
+            console.error('Camera access error:', err);
+            alert('Camera access denied or not available. Please allow camera permissions in your browser.');
+            closeCamera();
+        });
     });
 
     captureBtn.addEventListener('click', function() {
+        if (!cameraFeed.videoWidth || !cameraFeed.videoHeight) {
+            return;
+        }
         cameraCanvas.width = cameraFeed.videoWidth;
         cameraCanvas.height = cameraFeed.videoHeight;
         cameraCanvas.getContext('2d').drawImage(cameraFeed, 0, 0);
@@ -454,6 +476,8 @@ require __DIR__ . '/../../includes/header.php';
 
     function closeCamera() {
         cameraModal.style.display = 'none';
+        cameraModal.classList.add('is-hidden');
+        document.body.classList.remove('modal-open');
         if (stream) {
             stream.getTracks().forEach(function(track) { track.stop(); });
             stream = null;
@@ -461,6 +485,18 @@ require __DIR__ . '/../../includes/header.php';
     }
 
     closeCameraBtn.addEventListener('click', closeCamera);
+
+    cameraModal.addEventListener('click', function(e) {
+        if (e.target === cameraModal) {
+            closeCamera();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && cameraModal.style.display === 'flex') {
+            closeCamera();
+        }
+    });
 })();
 </script>
 

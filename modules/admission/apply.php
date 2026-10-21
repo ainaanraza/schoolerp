@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
             $filename = 'lead_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
             if (move_uploaded_file($_FILES['photo']['tmp_name'], $uploadDir . $filename)) {
-                $photoPath = '/itierp/uploads/photos/' . $filename;
+                $photoPath = 'uploads/photos/' . $filename;
             } else {
                 $errors[] = 'Failed to save uploaded photo.';
             }
@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ext = str_contains($parts[0], 'png') ? 'png' : 'jpg';
                     $filename = 'lead_cam_' . time() . '_' . random_int(1000, 9999) . '.' . $ext;
                     if (file_put_contents($uploadDir . $filename, $decoded)) {
-                        $photoPath = '/itierp/uploads/photos/' . $filename;
+                        $photoPath = 'uploads/photos/' . $filename;
                     }
                 }
             }
@@ -180,7 +180,45 @@ require __DIR__ . '/../../includes/header.php';
 <section class="card">
     <h2>Admission Application Form</h2>
     <?php if (is_logged_in() && in_array(current_role(), [ROLE_ADMIN, ROLE_SUPER_ADMIN], true)): ?>
-        <p class="admission-link-note">Public link for admissions: <a href="<?= htmlspecialchars($admissionFormLink) ?>" target="_blank"><?= htmlspecialchars($admissionFormLink) ?></a></p>
+        <div class="admission-link-card">
+            <div class="admission-link-card-header">
+                <span class="admission-link-tag">Public Admission Form Link</span>
+                <button type="button" class="btn-copy-link" onclick="copyAdmissionLink(this)">Copy Link</button>
+            </div>
+            <div class="admission-link-card-url">
+                <a href="<?= htmlspecialchars($admissionFormLink) ?>" target="_blank" id="admissionFormUrlText"><?= htmlspecialchars($admissionFormLink) ?></a>
+            </div>
+            <span class="admission-link-hint">Share this URL with prospective candidates for online applications.</span>
+        </div>
+        <script>
+        function copyAdmissionLink(btn) {
+            const urlEl = document.getElementById('admissionFormUrlText');
+            if (!urlEl) return;
+            const url = urlEl.href || urlEl.innerText;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function() {
+                    btn.innerText = 'Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(function() { btn.innerText = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
+                }).catch(function() { fallbackCopy(url, btn); });
+            } else {
+                fallbackCopy(url, btn);
+            }
+        }
+        function fallbackCopy(text, btn) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            btn.innerText = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(function() { btn.innerText = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
+        }
+        </script>
     <?php endif; ?>
 
     <?php if (!empty($errors)): ?>
@@ -253,24 +291,24 @@ require __DIR__ . '/../../includes/header.php';
             <input type="hidden" name="camera_photo" id="cameraPhotoData" value="">
         </div>
 
-        <!-- Camera Modal -->
-        <div id="cameraModal" class="camera-modal is-hidden">
-            <div class="camera-modal-inner">
-                <video id="cameraFeed" autoplay playsinline></video>
-                <canvas id="cameraCanvas" class="is-hidden"></canvas>
-                <div class="camera-modal-actions">
-                    <button type="button" id="captureBtn" class="photo-btn">&#128248; Capture</button>
-                    <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>
-                </div>
-            </div>
-        </div>
-
         <label>Notes</label>
         <textarea name="notes" rows="3"></textarea>
 
         <button type="submit">Submit Application</button>
     </form>
 </section>
+
+<!-- Camera Modal (Positioned at viewport root) -->
+<div id="cameraModal" class="camera-modal is-hidden">
+    <div class="camera-modal-inner">
+        <video id="cameraFeed" autoplay playsinline></video>
+        <canvas id="cameraCanvas" class="is-hidden"></canvas>
+        <div class="camera-modal-actions">
+            <button type="button" id="captureBtn" class="photo-btn">&#128248; Capture</button>
+            <button type="button" id="closeCameraBtn" class="photo-btn photo-btn-danger">Cancel</button>
+        </div>
+    </div>
+</div>
 
 <script>
 (function() {
@@ -286,6 +324,12 @@ require __DIR__ . '/../../includes/header.php';
     var closeCameraBtn = document.getElementById('closeCameraBtn');
     var cameraData = document.getElementById('cameraPhotoData');
     var stream = null;
+
+    // Ensure camera modal is attached directly to document.body so that
+    // transformed parent containers (.card, etc.) cannot disrupt fixed viewport centering
+    if (cameraModal && cameraModal.parentNode !== document.body) {
+        document.body.appendChild(cameraModal);
+    }
 
     function showPreview(src) {
         previewImg.src = src;
@@ -316,22 +360,44 @@ require __DIR__ . '/../../includes/header.php';
     // Clear
     clearBtn.addEventListener('click', clearPreview);
 
-    // Camera Open
+    // Open Camera
     cameraBtn.addEventListener('click', function() {
+        if (cameraModal.parentNode !== document.body) {
+            document.body.appendChild(cameraModal);
+        }
+        cameraModal.classList.remove('is-hidden');
         cameraModal.style.display = 'flex';
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } })
-            .then(function(s) {
-                stream = s;
-                cameraFeed.srcObject = stream;
-            })
-            .catch(function() {
-                alert('Camera access denied or not available.');
-                cameraModal.style.display = 'none';
-            });
+        document.body.classList.add('modal-open');
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Camera is not supported on this device/browser.');
+            closeCamera();
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        })
+        .then(function(s) {
+            stream = s;
+            cameraFeed.srcObject = stream;
+        })
+        .catch(function(err) {
+            console.error('Camera access error:', err);
+            alert('Camera access denied or not available. Please allow camera permissions in your browser.');
+            closeCamera();
+        });
     });
 
     // Capture
     captureBtn.addEventListener('click', function() {
+        if (!cameraFeed.videoWidth || !cameraFeed.videoHeight) {
+            return;
+        }
         cameraCanvas.width = cameraFeed.videoWidth;
         cameraCanvas.height = cameraFeed.videoHeight;
         cameraCanvas.getContext('2d').drawImage(cameraFeed, 0, 0);
@@ -345,12 +411,29 @@ require __DIR__ . '/../../includes/header.php';
     // Close Camera
     function closeCamera() {
         cameraModal.style.display = 'none';
+        cameraModal.classList.add('is-hidden');
+        document.body.classList.remove('modal-open');
         if (stream) {
             stream.getTracks().forEach(function(t) { t.stop(); });
             stream = null;
         }
     }
+
     closeCameraBtn.addEventListener('click', closeCamera);
+
+    // Close if clicking outside the modal content (on the overlay backdrop)
+    cameraModal.addEventListener('click', function(e) {
+        if (e.target === cameraModal) {
+            closeCamera();
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && cameraModal.style.display === 'flex') {
+            closeCamera();
+        }
+    });
 })();
 </script>
 

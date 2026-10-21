@@ -251,7 +251,6 @@ require __DIR__ . '/../../includes/header.php';
 <section class="card">
     <div class="form-header-actions">
         <h3>Finance Activity</h3>
-        <button type="button" class="btn-toggle-form" onclick="openOverrideModal(null, this)">+ Set Payable Override</button>
     </div>
 
     <div class="finance-tabs" role="tablist" aria-label="Finance activity tabs">

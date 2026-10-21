@@ -22,12 +22,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($name === '') {
             $errors[] = 'School name is required.';
         } else {
-            $stmt = $pdo->prepare('UPDATE schools SET name = :name, logo_path = :logo_path WHERE id = :id');
-            $stmt->execute([
+            $logoUpdateClause = '';
+            $params = [
                 'name' => $name,
-                'logo_path' => $logoPath !== '' ? $logoPath : null,
                 'id' => $school['id'],
-            ]);
+            ];
+
+            if (isset($_FILES['school_logo']) && $_FILES['school_logo']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../assets/uploads/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = time() . '_' . basename($_FILES['school_logo']['name']);
+                $targetPath = $uploadDir . $filename;
+                if (move_uploaded_file($_FILES['school_logo']['tmp_name'], $targetPath)) {
+                    $logoUpdateClause = ', logo_path = :logo_path';
+                    $params['logo_path'] = '/itierp/assets/uploads/' . $filename;
+                }
+            }
+
+            $stmt = $pdo->prepare('UPDATE schools SET name = :name' . $logoUpdateClause . ' WHERE id = :id');
+            $stmt->execute($params);
             $success[] = 'School settings updated.';
         }
     }
@@ -46,9 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->beginTransaction();
 
-                if ($isActive === 1) {
-                    $pdo->exec('UPDATE academic_sessions SET is_active = 0');
-                }
+                // Allow multiple active sessions natively
+                // Removed global deactivation
 
                 $stmt = $pdo->prepare(
                     'INSERT INTO academic_sessions (school_id, title, start_date, end_date, is_active)
@@ -128,6 +142,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'apply_maintenance_unlock_key') {
+        $key = trim($_POST['unlock_key'] ?? '');
+        $res = verify_and_apply_unlock($pdo, $key, 'renew_1year');
+        if ($res['success']) {
+            $success[] = $res['message'];
+        } else {
+            $errors[] = $res['message'];
+        }
+    }
+
     $school = $pdo->query('SELECT id, name, logo_path FROM schools ORDER BY id ASC LIMIT 1')->fetch();
 }
 
@@ -190,16 +214,16 @@ require __DIR__ . '/../../includes/header.php';
                             <td><?= (int)$session['class_count'] ?></td>
                             <td><span class="pill"><?= (int)$session['is_active'] === 1 ? 'Active' : 'Inactive' ?></span></td>
                             <td>
-                                <?php if ((int)$session['is_active'] !== 1): ?>
                                     <form method="post" class="inline-form">
-                                        <input type="hidden" name="action" value="activate_session">
+                                        <input type="hidden" name="action" value="toggle_session_active">
                                         <input type="hidden" name="session_id" value="<?= (int)$session['id'] ?>">
-                                        <button type="submit">Set Active</button>
+                                        <input type="hidden" name="is_active" value="<?= (int)$session['is_active'] === 1 ? '0' : '1' ?>">
+                                        <?php if ((int)$session['is_active'] === 1): ?>
+                                            <button type="submit" class="danger">Deactivate</button>
+                                        <?php else: ?>
+                                            <button type="submit">Activate</button>
+                                        <?php endif; ?>
                                     </form>
-
-                                <?php else: ?>
-                                    <span>Current Session</span>
-                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -216,14 +240,20 @@ require __DIR__ . '/../../includes/header.php';
 <div id="form-school" class="collapsible-form">
     <section class="card">
         <h3>School Profile</h3>
-        <form method="post" class="form-grid form-grid-wide">
+        <form method="post" class="form-grid form-grid-wide" enctype="multipart/form-data">
             <input type="hidden" name="action" value="update_school">
 
             <label>School Name</label>
             <input type="text" name="school_name" value="<?= htmlspecialchars((string)$school['name']) ?>" required>
 
-            <label>Logo Path (optional)</label>
-            <input type="text" name="logo_path" value="<?= htmlspecialchars((string)$school['logo_path']) ?>" placeholder="/assets/images/logo.png">
+            <label>Upload Logo</label>
+            <input type="file" name="school_logo" accept="image/*">
+            <?php if (!empty($school['logo_path'])): ?>
+                <div style="margin-top: 10px;">
+                    <p><small>Current Logo:</small></p>
+                    <img src="<?= htmlspecialchars((string)$school['logo_path']) ?>" alt="School Logo" style="max-height: 50px;">
+                </div>
+            <?php endif; ?>
 
             <button type="submit">Save School Settings</button>
         </form>

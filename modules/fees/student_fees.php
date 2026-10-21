@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_STUDENT, ROLE_PARENT]);
 
@@ -226,122 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pay_s
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'apply_concession') {
-    if (!$isSuperAdmin) {
-        $errors[] = 'Only superadmin can apply concession.';
-    }
 
-    $studentId = (int)($_POST['student_id'] ?? 0);
-    $concessionAmount = (float)($_POST['concession_amount'] ?? 0);
-    $concessionNote = trim((string)($_POST['concession_note'] ?? ''));
-
-    if (empty($errors) && $studentId <= 0) {
-        $errors[] = 'Invalid concession request.';
-    }
-    if (empty($errors) && $concessionAmount <= 0) {
-        $errors[] = 'Concession amount must be greater than zero.';
-    }
-    if (empty($errors) && $concessionNote === '') {
-        $errors[] = 'Please add a concession note.';
-    }
-
-    if (empty($errors)) {
-        try {
-            $pdo->beginTransaction();
-
-            $feeRowsStmt = $pdo->prepare(
-                'SELECT sf.id, sf.total_amount, sf.discount_amount, sf.payable_amount, sf.paid_amount,
-                        fs.fee_type, fs.billing_cycle
-                 FROM student_fees sf
-                 JOIN fee_structures fs ON fs.id = sf.fee_structure_id
-                 WHERE sf.student_id = :student_id
-                 ORDER BY CASE fs.fee_type WHEN "caution_money" THEN 0 WHEN "admission_fee" THEN 1 WHEN "tuition_fee" THEN 2 ELSE 3 END,
-                          CASE WHEN fs.billing_cycle = "one_time" THEN 0 ELSE 1 END,
-                          sf.id
-                 FOR UPDATE'
-            );
-            $feeRowsStmt->execute(['student_id' => $studentId]);
-            $feeRows = $feeRowsStmt->fetchAll();
-
-            if (empty($feeRows)) {
-                throw new RuntimeException('No fee records found for this student.');
-            }
-
-            $totalDiscountable = 0.0;
-            foreach ($feeRows as $feeRow) {
-                $totalAmount = (float)$feeRow['total_amount'];
-                $currentDiscount = (float)$feeRow['discount_amount'];
-                $currentPaid = (float)$feeRow['paid_amount'];
-                $totalDiscountable += max(0, $totalAmount - $currentDiscount - $currentPaid);
-            }
-
-            if ($totalDiscountable <= 0) {
-                throw new RuntimeException('No outstanding amount available for concession.');
-            }
-
-            if ($concessionAmount > $totalDiscountable) {
-                throw new RuntimeException('Concession cannot exceed outstanding amount of ₹' . number_format($totalDiscountable, 2) . '.');
-            }
-
-            $updateFeeStmt = $pdo->prepare(
-                'UPDATE student_fees
-                 SET discount_amount = :discount_amount,
-                     payable_amount = :payable_amount,
-                     status = :status
-                 WHERE id = :id'
-            );
-            $insertAdjustmentStmt = $pdo->prepare(
-                'INSERT INTO fee_adjustments (student_fee_id, adjustment_type, amount, reason, approved_by)
-                 VALUES (:student_fee_id, :adjustment_type, :amount, :reason, :approved_by)'
-            );
-
-            $remainingConcession = $concessionAmount;
-            foreach ($feeRows as $feeRow) {
-                if ($remainingConcession <= 0) {
-                    break;
-                }
-
-                $totalAmount = (float)$feeRow['total_amount'];
-                $currentDiscount = (float)$feeRow['discount_amount'];
-                $currentPaid = (float)$feeRow['paid_amount'];
-                $discountableAmount = max(0, $totalAmount - $currentDiscount - $currentPaid);
-
-                if ($discountableAmount <= 0) {
-                    continue;
-                }
-
-                $appliedConcession = min($remainingConcession, $discountableAmount);
-                $newDiscount = $currentDiscount + $appliedConcession;
-                $newPayable = max($currentPaid, $totalAmount - $newDiscount);
-
-                $updateFeeStmt->execute([
-                    'discount_amount' => $newDiscount,
-                    'payable_amount' => $newPayable,
-                    'status' => fee_status_for_amount($newPayable, $currentPaid),
-                    'id' => (int)$feeRow['id'],
-                ]);
-
-                $insertAdjustmentStmt->execute([
-                    'student_fee_id' => (int)$feeRow['id'],
-                    'adjustment_type' => 'discount',
-                    'amount' => $appliedConcession,
-                    'reason' => $concessionNote,
-                    'approved_by' => (int)$user['id'],
-                ]);
-
-                $remainingConcession -= $appliedConcession;
-            }
-
-            $pdo->commit();
-            $success[] = 'Concession applied successfully.';
-        } catch (Throwable $throwable) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            $errors[] = 'Unable to apply concession: ' . $throwable->getMessage();
-        }
-    }
-}
 
 $searchName = trim($_GET['search_name'] ?? '');
 $searchStatus = trim($_GET['search_status'] ?? '');
@@ -351,6 +236,10 @@ $searchDueAfter = trim($_GET['due_after'] ?? '');
 
 $extraWhere = [];
 $extraParams = [];
+
+if (!$isFinanceEditor) {
+    $extraWhere[] = 'sf.status != "paid"';
+}
 
 if ($searchName !== '') {
     $extraWhere[] = 'su.full_name LIKE :search_name';
@@ -376,9 +265,11 @@ if ($searchDueBefore !== '') {
 $feesSql =
     'SELECT sf.id, sf.student_id, sf.period_label, sf.total_amount, sf.discount_amount, sf.payable_amount, sf.paid_amount, sf.status, sf.due_date,
             fs.fee_type, fs.fee_title, fs.billing_cycle,
-            su.full_name AS student_name, s.admission_no
+            su.full_name AS student_name, s.admission_no,
+            ase.title AS session_title
      FROM student_fees sf
      JOIN fee_structures fs ON fs.id = sf.fee_structure_id
+     JOIN academic_sessions ase ON ase.id = fs.session_id
      JOIN students s ON s.id = sf.student_id
      LEFT JOIN users su ON su.id = s.user_id' .
     $filterData['clause'];
@@ -422,10 +313,13 @@ $studentSummaries = [];
 foreach ($fees as $fee) {
     $studentId = (int)$fee['student_id'];
     $feeType = (string)$fee['fee_type'];
+    $sessionTitle = (string)($fee['session_title'] ?? 'Unknown Session');
+    $groupKey = $studentId . '_' . $sessionTitle;
 
-    if (!isset($studentSummaries[$studentId])) {
-        $studentSummaries[$studentId] = [
+    if (!isset($studentSummaries[$groupKey])) {
+        $studentSummaries[$groupKey] = [
             'student_id' => $studentId,
+            'session_title' => $sessionTitle,
             'student_name' => (string)$fee['student_name'],
             'admission_no' => (string)$fee['admission_no'],
             'payable' => 0.0,
@@ -447,18 +341,18 @@ foreach ($fees as $fee) {
     $paid = (float)$fee['paid_amount'];
     $outstanding = max(0, $payable - $paid);
 
-    $studentSummaries[$studentId]['payable'] += $payable;
-    $studentSummaries[$studentId]['paid'] += $paid;
-    $studentSummaries[$studentId]['outstanding'] += $outstanding;
-    $studentSummaries[$studentId]['concession_total'] += (float)$fee['discount_amount'];
-    $studentSummaries[$studentId]['rows'][] = $fee;
+    $studentSummaries[$groupKey]['payable'] += $payable;
+    $studentSummaries[$groupKey]['paid'] += $paid;
+    $studentSummaries[$groupKey]['outstanding'] += $outstanding;
+    $studentSummaries[$groupKey]['concession_total'] += (float)$fee['discount_amount'];
+    $studentSummaries[$groupKey]['rows'][] = $fee;
 
-    if (!isset($studentSummaries[$studentId]['fee_types'][$feeType])) {
-        $studentSummaries[$studentId]['fee_types'][$feeType] = ['payable' => 0.0, 'paid' => 0.0];
+    if (!isset($studentSummaries[$groupKey]['fee_types'][$feeType])) {
+        $studentSummaries[$groupKey]['fee_types'][$feeType] = ['payable' => 0.0, 'paid' => 0.0];
     }
 
-    $studentSummaries[$studentId]['fee_types'][$feeType]['payable'] += $payable;
-    $studentSummaries[$studentId]['fee_types'][$feeType]['paid'] += $paid;
+    $studentSummaries[$groupKey]['fee_types'][$feeType]['payable'] += $payable;
+    $studentSummaries[$groupKey]['fee_types'][$feeType]['paid'] += $paid;
 }
 
 foreach ($studentSummaries as &$summaryRow) {
@@ -482,7 +376,9 @@ require __DIR__ . '/../../includes/header.php';
 ?>
 <section class="card">
     <h2>Fees Summary</h2>
-    <p>Payments are allocated in this order: caution money, admission fee, then tuition fee.</p>
+    <?php if ($isFinanceEditor): ?>
+        <p>Payments are allocated in this order: caution money, admission fee, then tuition fee.</p>
+    <?php endif; ?>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -528,16 +424,17 @@ require __DIR__ . '/../../includes/header.php';
             <thead>
                 <tr>
                     <th>Student</th>
-                    <th>Caution</th>
-                    <th>Admission</th>
-                    <th>Tuition</th>
+                    <th>Year / Session</th>
+                    <?php if ($isFinanceEditor): ?>
+                        <th>Caution</th>
+                        <th>Admission</th>
+                        <th>Tuition</th>
+                    <?php endif; ?>
                     <th>Payable</th>
                     <th>Paid</th>
                     <th>Outstanding</th>
                     <th>Status</th>
-                    <?php if ($isSuperAdmin): ?>
-                        <th>Concession</th>
-                    <?php endif; ?>
+
                     <th>Update</th>
                 </tr>
             </thead>
@@ -556,39 +453,21 @@ require __DIR__ . '/../../includes/header.php';
                             <?= htmlspecialchars($summaryRow['student_name']) ?><br>
                             <small><?= htmlspecialchars($summaryRow['admission_no']) ?></small>
                         </td>
-                        <?php foreach (['caution_money', 'admission_fee', 'tuition_fee'] as $feeType): ?>
-                            <?php $bucket = $summaryRow['fee_types'][$feeType] ?? ['payable' => 0, 'paid' => 0, 'outstanding' => 0, 'status' => 'pending']; ?>
-                            <td>
-                                <strong><?= number_format((float)$bucket['paid'], 2) ?></strong> / <?= number_format((float)$bucket['payable'], 2) ?><br>
-                                <small><?= htmlspecialchars(summary_status_label((string)$bucket['status'])) ?></small>
-                            </td>
-                        <?php endforeach; ?>
+                        <td><?= htmlspecialchars($summaryRow['session_title']) ?></td>
+                        <?php if ($isFinanceEditor): ?>
+                            <?php foreach (['caution_money', 'admission_fee', 'tuition_fee'] as $feeType): ?>
+                                <?php $bucket = $summaryRow['fee_types'][$feeType] ?? ['payable' => 0, 'paid' => 0, 'outstanding' => 0, 'status' => 'pending']; ?>
+                                <td>
+                                    <strong><?= number_format((float)$bucket['paid'], 2) ?></strong> / <?= number_format((float)$bucket['payable'], 2) ?><br>
+                                    <small><?= htmlspecialchars(summary_status_label((string)$bucket['status'])) ?></small>
+                                </td>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                         <td><?= number_format((float)$summaryRow['payable'], 2) ?></td>
                         <td><?= number_format((float)$summaryRow['paid'], 2) ?></td>
                         <td><?= number_format((float)$summaryRow['outstanding'], 2) ?></td>
                         <td><span class="pill"><?= htmlspecialchars(summary_status_label($overallStatus)) ?></span></td>
-                        <?php if ($isSuperAdmin): ?>
-                            <td>
-                                <?php if ((float)$summaryRow['concession_total'] > 0): ?>
-                                    <small>₹<?= number_format((float)$summaryRow['concession_total'], 2) ?></small><br>
-                                    <small><?= htmlspecialchars((string)$summaryRow['concession_note']) ?></small>
-                                <?php else: ?>
-                                    <small>No concession</small>
-                                <?php endif; ?>
-                                <div class="concession-trigger-wrap">
-                                    <button
-                                        type="button"
-                                        class="btn-concession-slim"
-                                        data-student-id="<?= (int)$summaryRow['student_id'] ?>"
-                                        data-student-name="<?= htmlspecialchars((string)$summaryRow['student_name'], ENT_QUOTES) ?>"
-                                        data-admission-no="<?= htmlspecialchars((string)$summaryRow['admission_no'], ENT_QUOTES) ?>"
-                                        data-current-note="<?= htmlspecialchars((string)$summaryRow['concession_note'], ENT_QUOTES) ?>"
-                                        onclick="openFeeConcessionModal(this)">
-                                        Give Concession
-                                    </button>
-                                </div>
-                            </td>
-                        <?php endif; ?>
+
                         <td>
                             <?php if (!$isFinanceEditor): ?>
                                 <span>Admin</span>
@@ -624,7 +503,7 @@ require __DIR__ . '/../../includes/header.php';
                 <?php endforeach; ?>
                 <?php if (empty($summaryRows)): ?>
                     <tr>
-                        <td colspan="<?= $isSuperAdmin ? '10' : '9' ?>">No fee records found for your account.</td>
+                        <td colspan="<?= $isSuperAdmin ? '10' : ($isFinanceEditor ? '9' : '6') ?>">No fee records found for your account.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -632,74 +511,5 @@ require __DIR__ . '/../../includes/header.php';
     </div>
 </section>
 
-<?php if ($isSuperAdmin): ?>
-<div id="form-fee-concession" class="collapsible-form">
-    <section class="card">
-        <h3>Give Concession</h3>
-        <p id="feeConcessionStudentLabel" class="concession-lead-label"></p>
-        <form method="post" class="form-grid form-grid-wide">
-            <input type="hidden" name="action" value="apply_concession">
-            <input type="hidden" name="student_id" value="">
 
-            <label>Concession Amount</label>
-            <input type="number" name="concession_amount" min="0.01" step="0.01" required>
-
-            <label>Concession Note</label>
-            <textarea name="concession_note" rows="4" placeholder="Reason for concession" required></textarea>
-
-            <button type="submit">Apply</button>
-        </form>
-    </section>
-</div>
-
-<script>
-function openFeeConcessionModal(button) {
-    var modal = document.getElementById('form-fee-concession');
-    var overlay = document.getElementById('modal-overlay');
-    var label = document.getElementById('feeConcessionStudentLabel');
-    var studentIdInput = modal ? modal.querySelector('input[name="student_id"]') : null;
-    var amountInput = modal ? modal.querySelector('input[name="concession_amount"]') : null;
-    var noteInput = modal ? modal.querySelector('textarea[name="concession_note"]') : null;
-
-    if (!modal || !overlay || !button) {
-        return;
-    }
-
-    if (studentIdInput) {
-        studentIdInput.value = button.dataset.studentId || '';
-    }
-    if (amountInput) {
-        amountInput.value = '';
-    }
-    if (noteInput) {
-        noteInput.value = button.dataset.currentNote || '';
-    }
-    if (label) {
-        var studentName = button.dataset.studentName || 'Selected student';
-        var admissionNo = button.dataset.admissionNo || '';
-        label.textContent = admissionNo ? (studentName + ' | ' + admissionNo) : studentName;
-    }
-
-    document.querySelectorAll('.collapsible-form.active').forEach(function(form) {
-        form.classList.remove('active');
-    });
-
-    modal.classList.add('active');
-    overlay.classList.add('active');
-    document.body.classList.add('modal-open');
-
-    if (!modal.querySelector('.modal-close-btn')) {
-        var closeBtn = document.createElement('span');
-        closeBtn.className = 'modal-close-btn';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.onclick = function() {
-            modal.classList.remove('active');
-            overlay.classList.remove('active');
-            document.body.classList.remove('modal-open');
-        };
-        modal.prepend(closeBtn);
-    }
-}
-</script>
-<?php endif; ?>
 <?php require __DIR__ . '/../../includes/footer.php'; ?>

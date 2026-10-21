@@ -2,7 +2,7 @@ USE school_erp;
 
 INSERT INTO users (full_name, email, password_hash, role, is_active)
 VALUES
-    ('Super Admin Demo', 'superadmin@demo.local', '$2y$10$d/xV1sTPjBUSdsIZ6RfW2esplkoLmeyRQAGBi4ZtFJynA2fZyhCCO', 'super_admin', 1),
+    ('Kalbe Mehdi', 'kalbemehdi@gmail.com', '$2y$10$oB4ZsgehqaOir7qpmK/GMuwjb0KAPpqx2wLQte81uWkZnu8NxSoti', 'super_admin', 1),
     ('Admin Demo', 'admin@demo.local', '$2y$10$YznHLFXpH53ObMTy4/SFCeUZ.2W63Zr8PNvgpmcFtwvSVZ6marE16', 'admin', 1),
     ('Teacher Demo', 'teacher@demo.local', '$2y$10$MzVhJISlj6siAZ4/Pw1SPuVvSo5BorlVPheKC7gddnQ8.gr1FeUAG', 'teacher', 1),
     ('Student Demo', 'student@demo.local', '$2y$10$Zyczwbzl.A8cSDpjq5MekOleFuogpOkTJVI2Gstb.7Kwye.xIg.we', 'student', 1),

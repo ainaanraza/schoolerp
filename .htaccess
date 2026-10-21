@@ -1,0 +1,18 @@
+# Unity ITI ERP - Apache Configuration & Subdomain Compatibility
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # If accessed through subdomain (e.g., erp.unityiti.edu.in),
+    # seamlessly route any legacy /itierp/ requests to the current directory
+    RewriteCond %{REQUEST_URI} ^/itierp/(.*)$
+    RewriteRule ^itierp/(.*)$ $1 [L,QSA]
+
+    # Security: Prevent direct directory browsing
+    Options -Indexes
+</IfModule>
+
+# Protect sensitive files and directories
+<FilesMatch "^\.|\.sql$|\.log$|\.env$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

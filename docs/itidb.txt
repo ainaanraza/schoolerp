@@ -1,0 +1,5 @@
+MySQL database name
+u971377821_itierp_db
+MySQL username
+u971377821_itierp_user
+pass-Itierp000**##

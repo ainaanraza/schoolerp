@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/_auth.php';
 
 if (developer_is_logged_in()) {
@@ -25,6 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Developer Portal Login</title>
+    <link rel="icon" type="image/png" href="/itierp/assets/images/favicon.png">
+    <link rel="icon" type="image/x-icon" href="/itierp/assets/images/favicon.ico">
+    <link rel="shortcut icon" href="/itierp/assets/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/itierp/assets/images/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/itierp/assets/css/style.css?v=<?= time() ?>">
 </head>

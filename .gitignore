@@ -1,0 +1,10 @@
+# Dependencies & Caches
+/node_modules/
+/vendor/
+.DS_Store
+Thumbs.db
+
+# Temporary archives
+index (2).zip
+index9.zip
+*.log

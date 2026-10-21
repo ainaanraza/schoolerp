@@ -172,7 +172,7 @@ require __DIR__ . '/../../includes/header.php';
         <div class="form-header-actions">
             <div>
                 <h3>Course List</h3>
-                <p class="muted-inline-note">Single structure model: Course only (no class/subject mapping)</p>
+
             </div>
             <button type="button" class="btn-toggle-form" onclick="toggleForm('form-course', this)">+ Add Course</button>
         </div>

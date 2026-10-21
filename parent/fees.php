@@ -68,12 +68,15 @@ if (!empty($childIds) && empty($errors)) {
     $sql =
         'SELECT sf.id, sf.student_id, sf.period_label, sf.payable_amount, sf.paid_amount, sf.status, sf.due_date,
                 fs.fee_type, fs.fee_title, fs.billing_cycle,
-                su.full_name AS student_name, s.admission_no
+                su.full_name AS student_name, s.admission_no,
+                ase.title AS session_title
          FROM student_fees sf
          JOIN fee_structures fs ON fs.id = sf.fee_structure_id
+         JOIN academic_sessions ase ON ase.id = fs.session_id
          JOIN students s ON s.id = sf.student_id
          LEFT JOIN users su ON su.id = s.user_id
-         WHERE sf.student_id IN (' . implode(', ', $placeholders) . ')';
+         WHERE sf.student_id IN (' . implode(', ', $placeholders) . ')
+           AND sf.status != "paid"';
 
     if ($selectedStudentId > 0) {
         $sql .= ' AND sf.student_id = :selected_student_id';
@@ -89,10 +92,13 @@ if (!empty($childIds) && empty($errors)) {
     foreach ($fees as $fee) {
         $studentId = (int)$fee['student_id'];
         $feeType = (string)$fee['fee_type'];
+        $sessionTitle = (string)($fee['session_title'] ?? 'Unknown Session');
+        $groupKey = $studentId . '_' . $sessionTitle;
 
-        if (!isset($summaryRows[$studentId])) {
-            $summaryRows[$studentId] = [
+        if (!isset($summaryRows[$groupKey])) {
+            $summaryRows[$groupKey] = [
                 'student_id' => $studentId,
+                'session_title' => $sessionTitle,
                 'student_name' => (string)$fee['student_name'],
                 'admission_no' => (string)$fee['admission_no'],
                 'payable' => 0.0,
@@ -110,16 +116,16 @@ if (!empty($childIds) && empty($errors)) {
         $paid = (float)$fee['paid_amount'];
         $outstanding = max(0, $payable - $paid);
 
-        $summaryRows[$studentId]['payable'] += $payable;
-        $summaryRows[$studentId]['paid'] += $paid;
-        $summaryRows[$studentId]['outstanding'] += $outstanding;
+        $summaryRows[$groupKey]['payable'] += $payable;
+        $summaryRows[$groupKey]['paid'] += $paid;
+        $summaryRows[$groupKey]['outstanding'] += $outstanding;
 
-        if (!isset($summaryRows[$studentId]['fee_types'][$feeType])) {
-            $summaryRows[$studentId]['fee_types'][$feeType] = ['payable' => 0.0, 'paid' => 0.0];
+        if (!isset($summaryRows[$groupKey]['fee_types'][$feeType])) {
+            $summaryRows[$groupKey]['fee_types'][$feeType] = ['payable' => 0.0, 'paid' => 0.0];
         }
 
-        $summaryRows[$studentId]['fee_types'][$feeType]['payable'] += $payable;
-        $summaryRows[$studentId]['fee_types'][$feeType]['paid'] += $paid;
+        $summaryRows[$groupKey]['fee_types'][$feeType]['payable'] += $payable;
+        $summaryRows[$groupKey]['fee_types'][$feeType]['paid'] += $paid;
     }
 
     foreach ($summaryRows as &$summaryRow) {
@@ -137,7 +143,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <section class="card">
     <h2>Fee Payments</h2>
-    <p>Each child is shown as a single summary row with caution money, admission fee, and tuition fee status.</p>
+    <p>Each child's pending fees are grouped by Academic Session year.</p>
 
     <?php if (!empty($errors)): ?>
         <div class="error">
@@ -173,9 +179,7 @@ require __DIR__ . '/../includes/header.php';
             <thead>
                 <tr>
                     <th>Student</th>
-                    <th>Caution Money</th>
-                    <th>Admission Fee</th>
-                    <th>Tuition Fee</th>
+                    <th>Year / Session</th>
                     <th>Total Payable</th>
                     <th>Total Paid</th>
                     <th>Outstanding</th>
@@ -197,13 +201,7 @@ require __DIR__ . '/../includes/header.php';
                             <?= htmlspecialchars($summaryRow['student_name']) ?><br>
                             <small><?= htmlspecialchars($summaryRow['admission_no']) ?></small>
                         </td>
-                        <?php foreach (['caution_money', 'admission_fee', 'tuition_fee'] as $feeType): ?>
-                            <?php $bucket = $summaryRow['fee_types'][$feeType] ?? ['payable' => 0, 'paid' => 0, 'outstanding' => 0, 'status' => 'pending']; ?>
-                            <td>
-                                <strong><?= number_format((float)$bucket['paid'], 2) ?></strong> / <?= number_format((float)$bucket['payable'], 2) ?><br>
-                                <small><?= htmlspecialchars(summary_status_label((string)$bucket['status'])) ?></small>
-                            </td>
-                        <?php endforeach; ?>
+                        <td><?= htmlspecialchars($summaryRow['session_title']) ?></td>
                         <td>₹<?= number_format((float)$summaryRow['payable'], 2) ?></td>
                         <td>₹<?= number_format((float)$summaryRow['paid'], 2) ?></td>
                         <td>₹<?= number_format((float)$summaryRow['outstanding'], 2) ?></td>
@@ -211,7 +209,7 @@ require __DIR__ . '/../includes/header.php';
                     </tr>
                 <?php endforeach; ?>
                 <?php if (empty($summaryRows)): ?>
-                    <tr><td colspan="8">No fee records found.</td></tr>
+                    <tr><td colspan="5">No fee records found.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

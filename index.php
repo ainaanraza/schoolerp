@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
 if (is_logged_in()) {
@@ -8,11 +8,26 @@ if (is_logged_in()) {
 
 $error = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
+    $loginInput = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    $statement = $pdo->prepare('SELECT id, full_name, email, password_hash, role, is_active FROM users WHERE email = :email LIMIT 1');
-    $statement->execute(['email' => $email]);
+    $statement = $pdo->prepare('
+        SELECT id, full_name, email, password_hash, role, is_active 
+        FROM users 
+        WHERE email = :email 
+           OR email = :with_domain 
+           OR email LIKE :prefix
+           OR full_name = :exact_name
+           OR full_name LIKE :name_like
+        LIMIT 1
+    ');
+    $statement->execute([
+        'email' => $loginInput,
+        'with_domain' => strpos($loginInput, '@') === false ? $loginInput . '@school.local' : $loginInput,
+        'prefix' => $loginInput . '@%',
+        'exact_name' => $loginInput,
+        'name_like' => '%' . $loginInput . '%',
+    ]);
     $user = $statement->fetch();
 
     if (!$user || !$user['is_active'] || !password_verify($password, $user['password_hash'])) {
@@ -41,8 +56,8 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
     <form method="post" class="stacked-form">
         <div>
-            <label>Email</label>
-            <input type="email" name="email" required placeholder="Enter your email">
+            <label>Email or Username</label>
+            <input type="text" name="email" required placeholder="Enter your email or username">
         </div>
 
         <div>

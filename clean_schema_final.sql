@@ -596,4 +596,4 @@ CREATE TABLE `users` (
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-09-24 20:52:00
-INSERT INTO users (id, full_name, email, password_hash, role, is_active) VALUES (1, 'Super Admin', 'superadmin@demo.local', '$2y$10$MVCsGBC9VRMkh.oVS/KIBexHeOGooXiMFgHX5GZuWZZOGIa2dcA0q', 'super_admin', 1);
+INSERT INTO users (id, full_name, email, password_hash, role, is_active) VALUES (1, 'Kalbe Mehdi', 'kalbemehdi@gmail.com', '$2y$10$oB4ZsgehqaOir7qpmK/GMuwjb0KAPpqx2wLQte81uWkZnu8NxSoti', 'super_admin', 1);

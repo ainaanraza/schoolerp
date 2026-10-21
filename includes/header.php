@@ -1,6 +1,16 @@
-﻿<?php
+<?php
 if (!isset($pageTitle)) {
     $pageTitle = 'School ERP';
+}
+
+$systemSchoolName = 'Unity ITI';
+$systemSchoolLogo = '/itierp/assets/images/unityiti_logo.jpeg';
+if (isset($pdo)) {
+    $sysSchoolStmt = $pdo->query('SELECT name, logo_path FROM schools ORDER BY id ASC LIMIT 1');
+    if ($sysSchool = $sysSchoolStmt->fetch()) {
+        $systemSchoolName = $sysSchool['name'] ?: $systemSchoolName;
+        $systemSchoolLogo = $sysSchool['logo_path'] ?: $systemSchoolLogo;
+    }
 }
 if (!function_exists('nav_active')) {
     function nav_active($path) {
@@ -51,6 +61,10 @@ if (is_logged_in() && isset($pdo)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?></title>
+    <link rel="icon" type="image/png" href="/itierp/assets/images/favicon.png">
+    <link rel="icon" type="image/x-icon" href="/itierp/assets/images/favicon.ico">
+    <link rel="shortcut icon" href="/itierp/assets/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/itierp/assets/images/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/itierp/assets/css/style.css?v=<?= time() ?>">
     <script>
@@ -160,9 +174,9 @@ if (is_logged_in() && isset($pdo)) {
         <aside class="app-sidebar" id="app-sidebar">
             <div class="sidebar-brand">
                 <div class="sidebar-brand-mark" aria-hidden="true">
-                    <img src="/itierp/assets/images/unityiti_logo.jpeg" alt="" class="sidebar-brand-logo">
+                    <img src="<?= htmlspecialchars((string)$systemSchoolLogo) ?>" alt="" class="sidebar-brand-logo">
                 </div>
-                <h2>Unity ITI</h2>
+                <h2><?= htmlspecialchars((string)$systemSchoolName) ?></h2>
                 <p>ERP SUITE</p>
             </div>
             <nav class="sidebar-nav">
@@ -239,11 +253,21 @@ if (is_logged_in() && isset($pdo)) {
                     <a href="/itierp/parent/notifications.php" class="nav-item<?= nav_active('/parent/notifications.php') ?>">Alerts</a>
                 <?php endif; ?>
                 
+                <div class="sidebar-bottom-spacer" aria-hidden="true"></div>
             </nav>
         </aside>
         <div class="app-sidebar-backdrop" id="app-sidebar-backdrop" aria-hidden="true"></div>
         
         <div class="app-main-content">
+            <?php
+            if (function_exists('get_maintenance_status') && isset($pdo)) {
+                $userRole = current_role();
+                if (in_array($userRole, ['admin', 'super_admin'], true)) {
+                    $headerMaintStatus = get_maintenance_status($pdo);
+                    echo render_maintenance_warning_banner($headerMaintStatus);
+                }
+            }
+            ?>
             <header class="app-topbar">
                 <div class="topbar-left">
                     <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-controls="app-sidebar" aria-expanded="false" aria-label="Open navigation menu">

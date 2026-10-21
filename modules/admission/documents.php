@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../includes/bootstrap.php';
 require_roles([ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_STUDENT]);
 
@@ -37,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'uploa
     }
 
     if (empty($errors) && $file !== null) {
-        $maxSize = 500 * 1024;
+        $maxSize = 1 * 1024 * 1024;
         if (($file['size'] ?? 0) > $maxSize) {
-            $errors[] = 'Document file must be 500KB or smaller.';
+            $errors[] = 'Document file must be 1MB or smaller.';
         }
 
         $extension = strtolower(pathinfo((string)($file['name'] ?? ''), PATHINFO_EXTENSION));
@@ -300,7 +300,7 @@ require __DIR__ . '/../../includes/header.php';
                 <label>Document Type</label>
                 <input type="text" name="document_type" placeholder="Aadhaar Card / Birth Certificate / Transfer Certificate" maxlength="80" required>
 
-                <label>File (PDF/JPG/PNG, max 5MB)</label>
+                <label>File (PDF/JPG/PNG, max 1MB)</label>
                 <input type="file" name="document_file" accept=".pdf,.jpg,.jpeg,.png" required>
 
                 <button type="submit">Upload Document</button>

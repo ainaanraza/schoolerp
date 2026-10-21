@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/_auth.php';
 developer_require_login();
 require_once __DIR__ . '/../config/db.php';
@@ -366,6 +366,10 @@ $totalPages = max(1, (int)ceil($totalRows / $perPage));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Developer Portal</title>
+    <link rel="icon" type="image/png" href="/itierp/assets/images/favicon.png">
+    <link rel="icon" type="image/x-icon" href="/itierp/assets/images/favicon.ico">
+    <link rel="shortcut icon" href="/itierp/assets/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/itierp/assets/images/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/itierp/assets/css/style.css?v=<?= time() ?>">
     <script>
@@ -463,7 +467,7 @@ $totalPages = max(1, (int)ceil($totalRows / $perPage));
                 <div class="card">
                     <h3>Portal Quick Links</h3>
                     <p style="margin-bottom: 10px;">Open portal entry points from one place.</p>
-                    <div class="toolbar-row">
+                        <a class="nav-item" href="/itierp/developer/maintenance.php" style="background: #bd3f47; color: #fff; font-weight: 700;">⚙️ Yearly Maintenance & AMC</a>
                         <a class="nav-item" href="/itierp/index.php" target="_blank" rel="noopener">Main Login</a>
                         <a class="nav-item" href="/itierp/superadmin/dashboard.php" target="_blank" rel="noopener">Super Admin</a>
                         <a class="nav-item" href="/itierp/admin/dashboard.php" target="_blank" rel="noopener">Admin</a>
