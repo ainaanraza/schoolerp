@@ -326,6 +326,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success[] = "Maintenance alert check ran: No milestone alerts pending for today (Days remaining: " . ($maintStatus['days_remaining'] ?? 0) . ").";
         }
     }
+
+    // Trigger Google Drive Backup Now
+    if ($action === 'trigger_backup_now') {
+        ob_start();
+        $secretToken = 'ItierpSecretBackupToken2026';
+        $_GET['token'] = $secretToken;
+        require __DIR__ . '/../config/backup.php';
+        $backupOutput = ob_get_clean();
+        if (str_contains((string)$backupOutput, 'STATUS: SUCCESS') || str_contains((string)$backupOutput, 'BACKUP SUCCESSFUL')) {
+            $success[] = "<strong>Google Drive Backup Completed Successfully!</strong><pre style='background:#0f172a; color:#38bdf8; padding:12px; border-radius:6px; margin-top:8px; font-size:12px; white-space:pre-wrap; max-height:200px; overflow-y:auto;'>" . htmlspecialchars($backupOutput) . "</pre>";
+        } else {
+            $errors[] = "Backup encountered an issue:<pre style='background:#0f172a; color:#f87171; padding:12px; border-radius:6px; margin-top:8px; font-size:12px; white-space:pre-wrap; max-height:200px; overflow-y:auto;'>" . htmlspecialchars($backupOutput) . "</pre>";
+        }
+    }
 }
 
 // Fetch live record and status
@@ -612,6 +626,7 @@ try {
             <button class="tab-btn" onclick="switchTab('tab-history', this)">Payment & Renewal History (<?= count($historyRows) ?>)</button>
             <button class="tab-btn" onclick="switchTab('tab-email-alerts', this)">Developer Email Alerts (30, 15, 7, 1 Day) (<?= count($alertLogs) ?>)</button>
             <button class="tab-btn" onclick="switchTab('tab-token', this)">Generate Emergency Unlock Token</button>
+            <button class="tab-btn" onclick="switchTab('tab-cron-backup', this)">Cron Jobs &amp; Google Drive</button>
         </div>
 
         <!-- Tab 1: AMC Configuration -->
@@ -1136,6 +1151,138 @@ try {
                         <button type="submit" class="btn-quick btn-quick-success">Set as Active Unlock Token</button>
                         <button type="button" class="btn-quick btn-quick-primary" onclick="copyToClipboard('customKeyInput')">Copy</button>
                     </form>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab 5: Cron Jobs & Google Drive Backup Center -->
+        <div id="tab-cron-backup" class="tab-content">
+            <section class="card" style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <h3 style="margin: 0;">Automated Cron Jobs &amp; Google Drive Backup</h3>
+                        <p style="margin-top: 4px; color: var(--on-surface-variant); font-size: 0.92rem;">
+                            Monitor, test, and manage the two scheduled automated tasks on your Hostinger server.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Job 1: Google Drive Backup Card -->
+                <div style="background: #0f172a; border: 1px solid rgba(255,255,255,0.12); padding: 22px; border-radius: 12px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <span style="background: #2563eb; color: #fff; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase;">
+                                CRON TASK 1 &bull; MIDNIGHT
+                            </span>
+                            <h4 style="color: #fff; margin: 8px 0 4px 0; font-size: 1.15rem;">
+                                ☁️ Automated MySQL Backup &rarr; Google Drive
+                            </h4>
+                            <p style="color: #94a3b8; font-size: 0.88rem; margin: 0;">
+                                Dumps entire ERP database into a SQL file (via PHP PDO Engine) and uploads it securely to Google Drive via Google Apps Script.
+                            </p>
+                        </div>
+                        <form method="post" style="margin: 0;">
+                            <input type="hidden" name="action" value="trigger_backup_now">
+                            <button type="submit" class="btn-quick btn-quick-primary" style="padding: 10px 20px;">
+                                🔄 Test &amp; Run Backup to Google Drive Now
+                            </button>
+                        </form>
+                    </div>
+
+                    <div style="background: #020617; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 14px; margin-top: 14px; font-size: 0.85rem;">
+                        <div style="color: #cbd5e1; margin-bottom: 8px;">
+                            <strong style="color: #38bdf8;">Hostinger Cron Command:</strong>
+                            <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-family: monospace; color: #f8fafc; margin-top: 4px; word-break: break-all;">
+                                /usr/bin/php /home/u971377821/domains/erp.unityiti.edu.in/public_html/itierp/config/backup.php
+                            </div>
+                        </div>
+                        <div style="color: #cbd5e1; margin-bottom: 8px;">
+                            <strong style="color: #a78bfa;">Direct Web Trigger URL (One-Click Test in Browser):</strong>
+                            <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-family: monospace; color: #f8fafc; margin-top: 4px; word-break: break-all;">
+                                <a href="/itierp/config/backup.php?token=ItierpSecretBackupToken2026" target="_blank" style="color: #60a5fa; text-decoration: underline;">
+                                    https://erp.unityiti.edu.in/itierp/config/backup.php?token=ItierpSecretBackupToken2026
+                                </a>
+                            </div>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 6px;">
+                            &bull; Schedule: <code>0 0 * * *</code> (Once daily at midnight) &bull; Fallback: Built-in PHP PDO Dump Engine (never fails due to missing mysqldump)
+                        </div>
+                    </div>
+
+                    <?php
+                    $backupLogPath = __DIR__ . '/../cron/backup_cron.log';
+                    $backupLogs = file_exists($backupLogPath) ? file_get_contents($backupLogPath) : 'No backup logs recorded yet. Click "Test & Run Backup to Google Drive Now" above.';
+                    $backupLogLines = array_slice(explode("\n", trim($backupLogs)), -10);
+                    ?>
+                    <div style="margin-top: 14px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; display: block; margin-bottom: 4px;">
+                            Recent Backup Execution Log:
+                        </span>
+                        <pre style="background: #020617; border: 1px solid rgba(255,255,255,0.06); color: #38bdf8; padding: 12px; border-radius: 6px; font-size: 11.5px; margin: 0; max-height: 160px; overflow-y: auto; white-space: pre-wrap;"><?= htmlspecialchars(implode("\n", $backupLogLines)) ?></pre>
+                    </div>
+                </div>
+
+                <!-- Job 2: Yearly Maintenance Alert Cron Card -->
+                <div style="background: #0f172a; border: 1px solid rgba(255,255,255,0.12); padding: 22px; border-radius: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <span style="background: #d97706; color: #fff; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase;">
+                                CRON TASK 2 &bull; DAILY 00:00 / 09:00 AM
+                            </span>
+                            <h4 style="color: #fff; margin: 8px 0 4px 0; font-size: 1.15rem;">
+                                ⏰ Yearly Maintenance Alert Scanner
+                            </h4>
+                            <p style="color: #94a3b8; font-size: 0.88rem; margin: 0;">
+                                Scans the ERP maintenance due date daily and sends milestone email alerts to developer (<code>razaainaan@gmail.com</code>) at 30, 15, 7, and 1 day remaining.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <form method="post" style="margin: 0;">
+                                <input type="hidden" name="action" value="trigger_manual_alerts_check">
+                                <button type="submit" class="btn-quick btn-quick-warning" style="padding: 10px 16px;">
+                                    🔄 Run Alert Scan Now
+                                </button>
+                            </form>
+                            <form method="post" style="margin: 0;">
+                                <input type="hidden" name="action" value="send_test_email">
+                                <button type="submit" class="btn-quick btn-quick-primary" style="padding: 10px 16px;">
+                                    🚀 Send Test Email
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div style="background: #020617; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 14px; margin-top: 14px; font-size: 0.85rem;">
+                        <div style="color: #cbd5e1; margin-bottom: 8px;">
+                            <strong style="color: #38bdf8;">Hostinger Cron Command:</strong>
+                            <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-family: monospace; color: #f8fafc; margin-top: 4px; word-break: break-all;">
+                                /usr/bin/php /home/u971377821/domains/erp.unityiti.edu.in/public_html/itierp/cron/maintenance_alerts.php
+                            </div>
+                        </div>
+                        <div style="color: #cbd5e1; margin-bottom: 8px;">
+                            <strong style="color: #a78bfa;">Direct Web Trigger URL (One-Click Test in Browser):</strong>
+                            <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-family: monospace; color: #f8fafc; margin-top: 4px; word-break: break-all;">
+                                <a href="/itierp/cron/maintenance_alerts.php?cron_key=ItierpSecretBackupToken2026" target="_blank" style="color: #60a5fa; text-decoration: underline;">
+                                    https://erp.unityiti.edu.in/itierp/cron/maintenance_alerts.php?cron_key=ItierpSecretBackupToken2026
+                                </a>
+                            </div>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 6px;">
+                            &bull; Schedule: <code>0 0 * * *</code> (Once daily at midnight) &bull; Milestones: 30, 15, 7, and 1 day &bull; Status: <?= htmlspecialchars($maintStatus['status_code']) ?> (<?= $maintStatus['days_remaining'] ?> days remaining)
+                        </div>
+                    </div>
+
+                    <?php
+                    $maintLogPath = __DIR__ . '/../cron/maintenance_cron.log';
+                    $maintLogs = file_exists($maintLogPath) ? file_get_contents($maintLogPath) : 'No maintenance cron logs recorded yet. Click "Run Alert Scan Now" above.';
+                    $maintLogLines = array_slice(explode("\n", trim($maintLogs)), -10);
+                    ?>
+                    <div style="margin-top: 14px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; display: block; margin-bottom: 4px;">
+                            Recent Maintenance Alert Scanner Log:
+                        </span>
+                        <pre style="background: #020617; border: 1px solid rgba(255,255,255,0.06); color: #4ade80; padding: 12px; border-radius: 6px; font-size: 11.5px; margin: 0; max-height: 160px; overflow-y: auto; white-space: pre-wrap;"><?= htmlspecialchars(implode("\n", $maintLogLines)) ?></pre>
+                    </div>
                 </div>
             </section>
         </div>
