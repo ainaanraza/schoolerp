@@ -153,13 +153,17 @@ backup_log("SQL Dump generated successfully via {$dumpMethod} (Size: {$fileSizeF
 backup_log("Uploading archive to Google Drive Web App...");
 $fileData = base64_encode(file_get_contents($backupFile));
 
+$googleDriveFolderId = getenv('GOOGLE_DRIVE_FOLDER_ID') ?: ''; // Optional specific Google Drive Folder ID
+
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $webAppUrl);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
     'file' => $fileData,
     'filename' => basename($backupFile),
-    'token' => $secretToken
+    'token' => $secretToken,
+    'folder_id' => $googleDriveFolderId,
+    'folder_name' => 'Unity ITI ERP Backups',
 ]));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
