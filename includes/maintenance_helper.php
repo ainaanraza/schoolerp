@@ -388,98 +388,119 @@ function check_and_send_maintenance_alerts(PDO $pdo, bool $force = false): array
     $dueDate = $status['due_date'];
     $developerEmail = !empty($rec['developer_alert_email']) ? trim($rec['developer_alert_email']) : 'razaainaan@gmail.com';
 
-    // Milestones requested: 30, 15, 7, 1 days
-    $milestones = [30, 15, 7, 1];
-    $sentResults = [];
-
-    foreach ($milestones as $m) {
-        // Trigger if days remaining is within or equal to milestone window
-        if ($daysRemaining <= $m) {
-            // Check if alert was already sent for this milestone and due_date
-            $checkStmt = $pdo->prepare("
-                SELECT id FROM maintenance_alert_logs 
-                WHERE maintenance_id = 1 
-                  AND due_date = :due_date 
-                  AND alert_day = :day 
-                  AND status = 'sent'
-                LIMIT 1
-            ");
-            $checkStmt->execute(['due_date' => $dueDate, 'day' => $m]);
-            if ($checkStmt->fetch()) {
-                continue; // Already sent for this milestone
-            }
-
-            // Prepare Email URL
-            $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? (str_contains(__DIR__, 'erp.unityiti.edu.in') ? 'erp.unityiti.edu.in' : 'localhost');
-            $appBase = function_exists('app_base_url') ? app_base_url() : (str_contains(__DIR__, 'itierp') ? '/itierp' : '');
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || str_contains($host, 'unityiti.edu.in') ? 'https://' : 'http://';
-            $fullAppUrl = $protocol . $host . $appBase;
-
-            $currencySymbol = ($status['currency'] === 'INR' || $status['currency'] === '₹') ? '₹' : $status['currency'];
-            $formattedFee = $currencySymbol . ' ' . number_format($status['annual_fee'], 2);
-
-            $subject = match ($m) {
-                30 => "[Reminder] School ERP Maintenance Due in 30 Days ({$status['due_date_formatted']})",
-                15 => "[Notice] School ERP Maintenance Due in 15 Days ({$status['due_date_formatted']})",
-                7 => "[Warning] School ERP Maintenance Due in 7 Days ({$status['due_date_formatted']})",
-                1 => "[URGENT] School ERP Stops Working in 1 Day! Maintenance Due Tomorrow",
-                default => "[Alert] School ERP Maintenance Milestone {$m} Days",
-            };
-
-            $htmlBody = build_maintenance_email_template([
-                'days_left' => $daysRemaining,
-                'due_date_formatted' => $status['due_date_formatted'],
-                'formatted_fee' => $formattedFee,
-                'school_name' => 'School ERP System',
-                'app_url' => $fullAppUrl,
-                'phone' => $rec['contact_phone'] ?? '+91 84299 39031',
-            ]);
-
-            $smtpUser = !empty($rec['smtp_username']) ? trim($rec['smtp_username']) : 'developer@uvedaaniversity.com';
-            $smtpFrom = !empty($rec['smtp_from_email']) ? trim($rec['smtp_from_email']) : $smtpUser;
-
-            $smtpConfig = [
-                'smtp_enabled' => !empty($rec['smtp_enabled']),
-                'smtp_host' => !empty($rec['smtp_host']) ? trim($rec['smtp_host']) : 'smtp.hostinger.com',
-                'smtp_port' => (int)($rec['smtp_port'] ?? 465),
-                'smtp_encryption' => !empty($rec['smtp_encryption']) ? trim($rec['smtp_encryption']) : 'ssl',
-                'smtp_username' => $smtpUser,
-                'smtp_password' => $rec['smtp_password'] ?? '',
-                'from_email' => $smtpFrom,
-                'from_name' => !empty($rec['smtp_from_name']) ? trim($rec['smtp_from_name']) : 'School ERP System',
-                'reply_to' => $smtpUser,
-            ];
-
-            $mailRes = send_maintenance_email($developerEmail, $subject, $htmlBody, $smtpConfig);
-
-            // Log attempt
-            $logStmt = $pdo->prepare("
-                INSERT INTO maintenance_alert_logs (
-                    maintenance_id, alert_day, due_date, recipient, status, subject, response_msg, sent_at
-                ) VALUES (
-                    1, :day, :due_date, :recipient, :status, :subject, :msg, NOW()
-                )
-            ");
-            $logStmt->execute([
-                'day' => $m,
-                'due_date' => $dueDate,
-                'recipient' => $developerEmail,
-                'status' => $mailRes['success'] ? 'sent' : 'failed',
-                'subject' => $subject,
-                'msg' => $mailRes['message'],
-            ]);
-
-            $sentResults[] = [
-                'day' => $m,
-                'success' => $mailRes['success'],
-                'message' => $mailRes['message'],
-            ];
-        }
+    // The 4 requested milestones: 30, 15, 7, 1 day.
+    // Each milestone ONLY triggers when actual days remaining matches that specific milestone!
+    // A 1-day tolerance [m-1, m] is allowed so running cron at any hour of that day catches it.
+    $targetMilestone = null;
+    if ($daysRemaining >= 29 && $daysRemaining <= 30) {
+        $targetMilestone = 30;
+    } elseif ($daysRemaining >= 14 && $daysRemaining <= 15) {
+        $targetMilestone = 15;
+    } elseif ($daysRemaining >= 6 && $daysRemaining <= 7) {
+        $targetMilestone = 7;
+    } elseif ($daysRemaining === 1) {
+        $targetMilestone = 1;
     }
+
+    if ($targetMilestone === null) {
+        return [
+            'success' => true,
+            'sent_count' => 0,
+            'message' => "No milestone due today. Actual days remaining: {$daysRemaining}. Alerts trigger only at 30, 15, 7, and 1 day remaining.",
+            'results' => [],
+        ];
+    }
+
+    // Check if this specific milestone alert was already sent for this due_date or already sent today
+    $checkStmt = $pdo->prepare("
+        SELECT id FROM maintenance_alert_logs 
+        WHERE maintenance_id = 1 
+          AND alert_day = :day 
+          AND (due_date = :due_date OR DATE(sent_at) = CURDATE())
+          AND status = 'sent'
+        LIMIT 1
+    ");
+    $checkStmt->execute(['due_date' => $dueDate, 'day' => $targetMilestone]);
+    if ($checkStmt->fetch()) {
+        return [
+            'success' => true,
+            'sent_count' => 0,
+            'message' => "Milestone {$targetMilestone}-day alert has already been sent for due date {$dueDate}.",
+            'results' => [],
+        ];
+    }
+
+    // Prepare Email URL
+    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? (str_contains(__DIR__, 'erp.unityiti.edu.in') ? 'erp.unityiti.edu.in' : 'localhost');
+    $appBase = function_exists('app_base_url') ? app_base_url() : (str_contains(__DIR__, 'itierp') ? '/itierp' : '');
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || str_contains($host, 'unityiti.edu.in') ? 'https://' : 'http://';
+    $fullAppUrl = $protocol . $host . $appBase;
+
+    $currencySymbol = ($status['currency'] === 'INR' || $status['currency'] === '₹') ? '₹' : $status['currency'];
+    $formattedFee = $currencySymbol . ' ' . number_format($status['annual_fee'], 2);
+
+    $subject = match ($targetMilestone) {
+        30 => "[Reminder] School ERP Maintenance Due in 30 Days ({$status['due_date_formatted']})",
+        15 => "[Notice] School ERP Maintenance Due in 15 Days ({$status['due_date_formatted']})",
+        7 => "[Warning] School ERP Maintenance Due in 7 Days ({$status['due_date_formatted']})",
+        1 => "[URGENT] School ERP Stops Working in 1 Day! Maintenance Due Tomorrow",
+        default => "[Alert] School ERP Maintenance Milestone {$targetMilestone} Days",
+    };
+
+    $htmlBody = build_maintenance_email_template([
+        'days_left' => $daysRemaining,
+        'due_date_formatted' => $status['due_date_formatted'],
+        'formatted_fee' => $formattedFee,
+        'school_name' => 'School ERP System',
+        'app_url' => $fullAppUrl,
+        'phone' => $rec['contact_phone'] ?? '+91 84299 39031',
+    ]);
+
+    $smtpUser = !empty($rec['smtp_username']) ? trim($rec['smtp_username']) : 'developer@uvedaaniversity.com';
+    $smtpFrom = !empty($rec['smtp_from_email']) ? trim($rec['smtp_from_email']) : $smtpUser;
+
+    $smtpConfig = [
+        'smtp_enabled' => !empty($rec['smtp_enabled']),
+        'smtp_host' => !empty($rec['smtp_host']) ? trim($rec['smtp_host']) : 'smtp.hostinger.com',
+        'smtp_port' => (int)($rec['smtp_port'] ?? 465),
+        'smtp_encryption' => !empty($rec['smtp_encryption']) ? trim($rec['smtp_encryption']) : 'ssl',
+        'smtp_username' => $smtpUser,
+        'smtp_password' => $rec['smtp_password'] ?? '',
+        'from_email' => $smtpFrom,
+        'from_name' => !empty($rec['smtp_from_name']) ? trim($rec['smtp_from_name']) : 'School ERP System',
+        'reply_to' => $smtpUser,
+    ];
+
+    $mailRes = send_maintenance_email($developerEmail, $subject, $htmlBody, $smtpConfig);
+
+    // Log attempt
+    $logStmt = $pdo->prepare("
+        INSERT INTO maintenance_alert_logs (
+            maintenance_id, alert_day, due_date, recipient, status, subject, response_msg, sent_at
+        ) VALUES (
+            1, :day, :due_date, :recipient, :status, :subject, :msg, NOW()
+        )
+    ");
+    $logStmt->execute([
+        'day' => $targetMilestone,
+        'due_date' => $dueDate,
+        'recipient' => $developerEmail,
+        'status' => $mailRes['success'] ? 'sent' : 'failed',
+        'subject' => $subject,
+        'msg' => $mailRes['message'],
+    ]);
+
+    $sentResults = [
+        [
+            'day' => $targetMilestone,
+            'success' => $mailRes['success'],
+            'message' => $mailRes['message'],
+        ]
+    ];
 
     return [
         'success' => true,
-        'sent_count' => count($sentResults),
+        'sent_count' => $mailRes['success'] ? 1 : 0,
         'results' => $sentResults,
     ];
 }
@@ -553,9 +574,6 @@ function send_test_maintenance_alert(PDO $pdo, string $targetEmail = 'razaainaan
  */
 function check_and_enforce_maintenance_lock(PDO $pdo): void
 {
-    // Opportunistically check and dispatch developer email alerts for 30, 15, 7, 1 days
-    check_and_send_maintenance_alerts($pdo);
-
     // Skip if running from CLI
     if (php_sapi_name() === 'cli') {
         return;
