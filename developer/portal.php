@@ -699,5 +699,8 @@ $totalPages = max(1, (int)ceil($totalRows / $perPage));
             <?php endif; ?>
         <?php endif; ?>
     </main>
+    <footer class="erp-bottom-credit">
+        Developed by <a href="https://ainaanraza.me" target="_blank" rel="noopener noreferrer">Ainaan Raza</a>
+    </footer>
 </body>
 </html>

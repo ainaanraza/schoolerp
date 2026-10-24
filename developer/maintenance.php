@@ -1316,5 +1316,8 @@ try {
             alert('Copied to clipboard: ' + el.value);
         }
     </script>
+    <footer class="erp-bottom-credit" style="margin-top: 32px;">
+        Developed by <a href="https://ainaanraza.me" target="_blank" rel="noopener noreferrer">Ainaan Raza</a>
+    </footer>
 </body>
 </html>

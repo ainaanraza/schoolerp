@@ -64,5 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </p>
         </section>
     </main>
+    <footer class="erp-bottom-credit">
+        Developed by <a href="https://ainaanraza.me" target="_blank" rel="noopener noreferrer">Ainaan Raza</a>
+    </footer>
 </body>
 </html>

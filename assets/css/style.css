@@ -2421,3 +2421,52 @@ body.is-guest::before {
   width: 16px;
   height: 16px;
 }
+
+/* ERP Bottom Credit Strip */
+.erp-bottom-credit {
+  margin-top: auto;
+  padding: 6px 16px;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: var(--on-surface-variant, #4d5b74);
+  opacity: 0.42;
+  border-top: 1px solid rgba(77, 91, 116, 0.08);
+  user-select: none;
+  flex-shrink: 0;
+  transition: opacity 0.25s ease;
+}
+
+.erp-bottom-credit:hover {
+  opacity: 0.85;
+}
+
+.erp-bottom-credit a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.erp-bottom-credit a:hover {
+  color: var(--primary, #b58a4a);
+  text-decoration: underline;
+}
+
+body.is-guest .erp-bottom-credit {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 10;
+  background: transparent;
+}
+
+@media print {
+  .erp-bottom-credit {
+    display: none !important;
+  }
+}
+
