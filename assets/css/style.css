@@ -32,15 +32,32 @@
 
 body {
   font-family: var(--font-body);
-  background: var(--background);
-  background-image:
-    radial-gradient(circle at 12% 8%, rgba(181, 138, 74, 0.2), transparent 34%),
-    radial-gradient(circle at 90% 4%, rgba(31, 61, 119, 0.14), transparent 28%),
-    linear-gradient(180deg, #f6f8fc 0%, #eef2f8 48%, #e7edf7 100%);
-  background-attachment: fixed;
+  background-color: var(--background);
   color: var(--on-surface);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+}
+
+/* Universal unified background that stays seamlessly consistent on all screens & mobile */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(181, 138, 74, 0.16), transparent 34%),
+    radial-gradient(circle at 90% 4%, rgba(31, 61, 119, 0.12), transparent 28%),
+    linear-gradient(180deg, #f6f8fc 0%, #eef2f8 48%, #e7edf7 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  pointer-events: none;
+  z-index: -1;
 }
 
 body.modal-open {
@@ -87,15 +104,14 @@ p {
   height: 100vh;
   overflow: hidden;
   position: relative;
+  background: transparent;
 }
 
 .app-main-content {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(circle at 94% 4%, rgba(181, 138, 74, 0.11), transparent 20%),
-    radial-gradient(circle at 6% 16%, rgba(31, 61, 119, 0.08), transparent 18%);
+  background: transparent !important;
   min-width: 0;
   height: 100vh;
   overflow-y: auto;
@@ -398,17 +414,20 @@ body.nav-open .mobile-nav-toggle span:nth-child(3) {
 }
 
 body.is-guest {
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  justify-content: space-between;
+  background: transparent !important;
+  padding: 1rem 0;
 }
 
 .guest-container {
   max-width: 520px;
   width: 100%;
-  margin: 0 auto;
+  margin: auto auto;
   padding: 1rem;
 }
 
@@ -1218,7 +1237,7 @@ tr:last-child td {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    background-attachment: scroll !important;
+    background: transparent !important;
     padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
   }
 
@@ -2233,8 +2252,10 @@ tr:last-child td {
   body.is-guest {
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-y: auto;
-    padding: 1.5rem 0;
+    padding: 1rem 0;
+    background: transparent !important;
   }
 
   .guest-container {
@@ -2342,17 +2363,11 @@ tr:last-child td {
 
 body.is-guest {
   position: relative;
+  background: transparent !important;
 }
 
 body.is-guest::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    linear-gradient(120deg, rgba(31, 61, 119, 0.14), transparent 45%),
-    radial-gradient(circle at 85% 18%, rgba(181, 138, 74, 0.23), transparent 34%);
-  pointer-events: none;
-  z-index: -1;
+  display: none !important;
 }
 
 /* Custom Multi Select Widget */
@@ -2422,17 +2437,20 @@ body.is-guest::before {
   height: 16px;
 }
 
-/* ERP Bottom Credit Strip */
+/* ERP Bottom Credit Strip - No separator line, completely seamless */
 .erp-bottom-credit {
   margin-top: auto;
-  padding: 6px 16px;
+  padding: 10px 16px 14px 16px;
   text-align: center;
   font-size: 0.72rem;
   line-height: 1.4;
   letter-spacing: 0.04em;
   color: var(--on-surface-variant, #4d5b74);
   opacity: 0.42;
-  border-top: 1px solid rgba(77, 91, 116, 0.08);
+  border: none !important;
+  border-top: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
   user-select: none;
   flex-shrink: 0;
   transition: opacity 0.25s ease;
@@ -2455,13 +2473,12 @@ body.is-guest::before {
 }
 
 body.is-guest .erp-bottom-credit {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   width: 100%;
-  z-index: 10;
-  background: transparent;
+  margin-top: auto;
+  border: none !important;
+  border-top: none !important;
+  background: transparent !important;
 }
 
 @media print {
