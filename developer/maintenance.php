@@ -1204,6 +1204,14 @@ try {
                                 </a>
                             </div>
                         </div>
+                        <div style="color: #cbd5e1; margin-bottom: 8px;">
+                            <strong style="color: #4ade80;">Google Drive Target Folder:</strong>
+                            <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-family: monospace; color: #f8fafc; margin-top: 4px; word-break: break-all;">
+                                <a href="https://drive.google.com/drive/folders/1F0O9Y6gxA2_w-Rz4pe4hyzsbTngrLcLi" target="_blank" style="color: #4ade80; text-decoration: underline; font-weight: 700;">
+                                    📁 Open Backup Folder in Google Drive (ID: 1F0O9Y6gxA2_w-Rz4pe4hyzsbTngrLcLi) &rarr;
+                                </a>
+                            </div>
+                        </div>
                         <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 6px;">
                             &bull; Schedule: <code>0 0 * * *</code> (Once daily at midnight) &bull; Fallback: Built-in PHP PDO Dump Engine (never fails due to missing mysqldump)
                         </div>
